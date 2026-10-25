@@ -1,0 +1,28 @@
+# Laravel Backend
+monitoring-pkl-app/.env
+monitoring-pkl-app/vendor/
+monitoring-pkl-app/node_modules/
+monitoring-pkl-app/storage/*.key
+monitoring-pkl-app/public/storage
+monitoring-pkl-app/storage/framework/cache/*
+monitoring-pkl-app/storage/framework/sessions/*
+monitoring-pkl-app/storage/framework/views/*
+monitoring-pkl-app/storage/logs/*
+
+# Flutter Frontend
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/build/
+frontend/.packages
+frontend/android/.gradle
+frontend/android/local.properties
+frontend/ios/.generated/
+frontend/macos/.generated/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
