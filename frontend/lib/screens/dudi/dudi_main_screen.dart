@@ -8,6 +8,7 @@ import '../../routes/app_routes.dart';
 import '../common/ganti_password_screen.dart';
 import 'dudi_lokasi_screen.dart';
 import 'dudi_logbook_detail_screen.dart';
+import 'dudi_penilaian_screen.dart';
 
 /// ==============================================================================
 /// HALAMAN UTAMA PEMBIMBING DUDI (SMART PKL)
@@ -100,6 +101,13 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     if (mounted) {
       setState(() {
         _students = list;
+        for (final s in list) {
+          final sId = s['id']?.toString() ?? s['nis']?.toString() ?? s['name']?.toString() ?? '';
+          if (s['dudi_score'] != null) {
+            final val = double.tryParse(s['dudi_score'].toString());
+            if (val != null) _studentScores[sId] = val;
+          }
+        }
         _isLoadingStudents = false;
       });
     }
@@ -545,249 +553,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     return 'E';
   }
 
-  void _showInputNilaiModal(String studentId, String studentName, double? initialScore) {
-    double tempScore = initialScore ?? 85.0;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final predikat = _getGradeLabel(tempScore);
-            String predikatDesc = 'Sangat Baik';
-            if (tempScore < 70) {
-              predikatDesc = 'Kurang';
-            } else if (tempScore < 80) {
-              predikatDesc = 'Cukup';
-            } else if (tempScore < 90) {
-              predikatDesc = 'Baik';
-            }
-
-            return Container(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF2563EB), size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Beri Nilai PKL',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              studentName,
-                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Display Nilai & Predikat
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Nilai Instansi DU/DI',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              tempScore.toStringAsFixed(0),
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFBFDBFE)),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Grade $predikat',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1D4ED8),
-                                ),
-                              ),
-                              Text(
-                                predikatDesc,
-                                style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: const Color(0xFF2563EB),
-                      thumbColor: const Color(0xFF2563EB),
-                      overlayColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                      valueIndicatorColor: const Color(0xFF1E40AF),
-                    ),
-                    child: Slider(
-                      value: tempScore,
-                      min: 0,
-                      max: 100,
-                      divisions: 100,
-                      label: tempScore.toStringAsFixed(0),
-                      onChanged: (val) {
-                        setModalState(() {
-                          tempScore = val;
-                        });
-                      },
-                    ),
-                  ),
-
-                  // Quick presets
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [75, 80, 85, 90, 95, 100].map((preset) {
-                      final isSelected = tempScore.round() == preset;
-                      return InkWell(
-                        onTap: () {
-                          setModalState(() {
-                            tempScore = preset.toDouble();
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '$preset',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: isSelected ? Colors.white : AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _studentScores[studentId] = tempScore;
-                            });
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Nilai PKL untuk $studentName berhasil disimpan: ${tempScore.toStringAsFixed(0)}'),
-                                backgroundColor: const Color(0xFF16A34A),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                          ),
-                          child: const Text('Simpan Nilai', style: TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   Widget _buildStudentListItem(Map<String, dynamic> student) {
     final name = student['name']?.toString() ?? 'Siswa PKL';
@@ -912,7 +678,24 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
               ),
               const SizedBox(width: 10),
               ElevatedButton.icon(
-                onPressed: () => _showInputNilaiModal(studentId, name, currentScore),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DudiPenilaianScreen(
+                        student: student,
+                        companyName: _locations.isNotEmpty ? _locations.first['name'] : null,
+                      ),
+                    ),
+                  ).then((val) {
+                    if (val != null && val is double) {
+                      setState(() {
+                        _studentScores[studentId] = val;
+                      });
+                    }
+                    _loadStudents();
+                  });
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: currentScore != null ? const Color(0xFF4F46E5) : const Color(0xFF2563EB),
                   foregroundColor: Colors.white,

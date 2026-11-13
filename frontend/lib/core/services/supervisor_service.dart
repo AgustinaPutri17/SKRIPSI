@@ -76,6 +76,62 @@ class SupervisorService {
     return null;
   }
 
+  /// GET /api/supervisor/students/{id}/assessment
+  /// Mengambil data penilaian siswa oleh DUDI
+  static Future<Map<String, dynamic>?> getAssessment(int studentId) async {
+    final url = Uri.parse('${AuthService.baseUrl}/supervisor/students/$studentId/assessment');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Map<String, dynamic>.from(data['data'] as Map);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// POST /api/supervisor/students/{id}/assessment
+  /// Menyimpan penilaian siswa oleh DUDI (Indikator 1-4 dan total skor)
+  static Future<Map<String, dynamic>> saveAssessment({
+    required int studentId,
+    required double dudiScore,
+    required Map<String, dynamic> components,
+    String? notes,
+  }) async {
+    final url = Uri.parse('${AuthService.baseUrl}/supervisor/students/$studentId/assessment');
+    try {
+      final headers = await _getHeaders();
+      final body = jsonEncode({
+        'dudi_score': dudiScore,
+        'dudi_components': components,
+        'dudi_notes': notes ?? '',
+      });
+
+      final response = await http
+          .post(url, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Penilaian berhasil disimpan',
+          'data': data['data'],
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Gagal menyimpan penilaian (Status ${response.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // 7.2 MANAJEMEN LOKASI PKL OLEH DUDI (locations)
   // ─────────────────────────────────────────────────────────────────────────────

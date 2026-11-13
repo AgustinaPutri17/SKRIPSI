@@ -77,3 +77,4 @@ class SnapshotSeeder extends Seeder
         }
     }
 }
+
