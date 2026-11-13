@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             LocationSeeder::class,
             PeriodSeeder::class,
             PlacementSeeder::class,
+            SnapshotSeeder::class,
         ]);
     }
 }
