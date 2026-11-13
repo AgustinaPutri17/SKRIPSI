@@ -9,6 +9,10 @@ class AuthService {
   static const String _keyUser = 'auth_user';
   static const String _keyCustomBaseUrl = 'custom_base_url';
 
+  /// URL Cloudflare Tunnel aktif (Online publik)
+  /// Diperbarui otomatis oleh jalankan_online.bat atau dapat diatur via tombol Pengaturan Server di aplikasi.
+  static const String cloudflareTunnelUrl = 'https://arizona-deutsch-graduated-define.trycloudflare.com/api';
+
   static String? _cachedBaseUrl;
 
   /// Inisialisasi awal (dipanggil saat startup di main.dart)
@@ -22,22 +26,33 @@ class AuthService {
   /// Daftar kandidat URL backend yang otomatis dicoba saat menghubungkan
   static List<String> get candidateUrls {
     final list = <String>[];
-    if (_cachedBaseUrl != null && _cachedBaseUrl!.trim().isNotEmpty) {
-      list.add(_cachedBaseUrl!.trim());
-    }
 
     if (kIsWeb) {
-      const webOptions = ['http://localhost:8000/api', 'http://127.0.0.1:8000/api'];
+      try {
+        final origin = Uri.base.origin;
+        if (origin.isNotEmpty && !origin.startsWith('null')) {
+          list.add('$origin/api');
+        }
+      } catch (_) {}
+      const webOptions = [
+        'https://slow-halifax-ddr-parties.trycloudflare.com/api',
+        'http://localhost:8000/api',
+        'http://127.0.0.1:8000/api',
+      ];
       for (final opt in webOptions) {
         if (!list.contains(opt)) list.add(opt);
       }
-    } else if (Platform.isAndroid) {
+      return list;
+    }
+
+    if (Platform.isAndroid) {
       // Prioritas Android:
-      // 1. 127.0.0.1 (sangat stabil lewat USB adb reverse)
-      // 2. 192.168.100.13 (IP Wi-Fi laptop saat terhubung nirkabel)
-      // 3. 10.0.2.2 (Android Emulator di PC)
+      // 1. 127.0.0.1 (USB adb reverse via kabel Tipe-C - respon tercepat)
+      // 2. Cloudflare Tunnel URL aktif (fallback otomatis jika kabel dicabut)
+      // 3. IP Wi-Fi lokal
       const androidOptions = [
         'http://127.0.0.1:8000/api',
+        'https://slow-halifax-ddr-parties.trycloudflare.com/api',
         'http://192.168.100.13:8000/api',
         'http://10.0.2.2:8000/api',
       ];
@@ -53,22 +68,46 @@ class AuthService {
         if (!list.contains(opt)) list.add(opt);
       }
     }
+
+    // Jika cloudflareTunnelUrl aktif diisi, jadikan prioritas online cadangan
+    if (cloudflareTunnelUrl.trim().isNotEmpty) {
+      final cf = cloudflareTunnelUrl.trim();
+      if (!list.contains(cf)) list.add(cf);
+    }
+
+    if (_cachedBaseUrl != null && _cachedBaseUrl!.trim().isNotEmpty) {
+      final cached = _cachedBaseUrl!.trim();
+      if (!list.contains(cached)) list.add(cached);
+    }
     return list;
   }
 
   /// Default baseUrl berdasarkan platform
   static String get defaultBaseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8000/api';
-    } else if (Platform.isAndroid) {
-      return 'http://127.0.0.1:8000/api';
-    } else {
-      return 'http://127.0.0.1:8000/api';
+      try {
+        final origin = Uri.base.origin;
+        if (origin.isNotEmpty && !origin.startsWith('null')) {
+          return '$origin/api';
+        }
+      } catch (_) {}
     }
+    if (cloudflareTunnelUrl.trim().isNotEmpty) {
+      return cloudflareTunnelUrl.trim();
+    }
+    return 'http://127.0.0.1:8000/api';
   }
 
   /// Resolves the active base URL dynamically.
   static String get baseUrl {
+    if (kIsWeb) {
+      try {
+        final origin = Uri.base.origin;
+        if (origin.isNotEmpty && !origin.startsWith('null')) {
+          return '$origin/api';
+        }
+      } catch (_) {}
+    }
     if (_cachedBaseUrl != null && _cachedBaseUrl!.trim().isNotEmpty) {
       return _cachedBaseUrl!.trim();
     }
@@ -99,6 +138,37 @@ class AuthService {
     await prefs.remove(_keyCustomBaseUrl);
   }
 
+  /// Menguji apakah URL server dapat dihubungi secara real-time
+  static Future<bool> testConnection([String? customUrl]) async {
+    final target = (customUrl != null && customUrl.trim().isNotEmpty) ? customUrl.trim() : baseUrl;
+    String clean = target;
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'https://$clean';
+    }
+    while (clean.endsWith('/')) {
+      clean = clean.substring(0, clean.length - 1);
+    }
+    if (!clean.endsWith('/api')) {
+      clean = '$clean/api';
+    }
+
+    try {
+      final response = await http
+          .get(Uri.parse('$clean/ping'))
+          .timeout(const Duration(seconds: 4));
+      return response.statusCode == 200;
+    } catch (_) {
+      try {
+        final response = await http
+            .get(Uri.parse('$clean/login'))
+            .timeout(const Duration(seconds: 4));
+        return response.statusCode < 500;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
   /// Memformat URL gambar dari server Laravel agar selalu sesuai dengan host backend aktif
   static String formatImageUrl(String? pathOrUrl) {
     if (pathOrUrl == null || pathOrUrl.trim().isEmpty) return '';
@@ -107,9 +177,21 @@ class AuthService {
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       final uri = Uri.tryParse(trimmed);
-      if (uri != null && (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
+      if (uri != null) {
         final serverUri = Uri.parse(serverHost);
-        return uri.replace(host: serverUri.host, port: serverUri.port, scheme: serverUri.scheme).toString();
+        if (uri.path.startsWith('/storage/') ||
+            uri.host == 'localhost' ||
+            uri.host == '127.0.0.1' ||
+            uri.host == serverUri.host ||
+            uri.host.endsWith('.trycloudflare.com')) {
+          return Uri(
+            scheme: serverUri.scheme,
+            host: serverUri.host,
+            port: serverUri.hasPort ? serverUri.port : null,
+            path: uri.path,
+            query: uri.hasQuery ? uri.query : null,
+          ).toString();
+        }
       }
       return trimmed;
     }

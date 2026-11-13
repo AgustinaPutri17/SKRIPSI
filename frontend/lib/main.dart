@@ -15,7 +15,7 @@ class MonitoringPklApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Monitoring PKL SMK',
+      title: 'SMART PKL',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: AppRoutes.login,

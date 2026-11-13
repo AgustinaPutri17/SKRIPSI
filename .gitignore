@@ -26,3 +26,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Binaries & Tooling
+*.apk
+cloudflared.exe

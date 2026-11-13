@@ -52,6 +52,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _logbooks = [];
   List<Map<String, dynamic>> _locations = [];
+  final Map<String, double> _studentScores = {};
 
   String _selectedLogbookFilter = 'submitted'; // 'all', 'submitted', 'approved', 'rejected'
 
@@ -177,9 +178,13 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.groups_rounded, size: 22),
+                child: Icon(Icons.assignment_turned_in_outlined, size: 22),
               ),
-              label: 'Siswa',
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.assignment_turned_in_rounded, size: 22),
+              ),
+              label: 'Nilai PKL',
             ),
             BottomNavigationBarItem(
               icon: Padding(
@@ -246,45 +251,24 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Greeting & Mentor Card
-                      Row(
+                      // Greeting & Mentor Info
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF6FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFBFDBFE)),
-                            ),
-                            child: const Icon(
-                              Icons.business_center_rounded,
-                              color: AppColors.primary,
-                              size: 24,
+                          Text(
+                            'Halo, $supervisorName 👋',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Halo, $supervisorName 👋',
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Instruktur Lapangan • $companyName',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(height: 3),
+                          Text(
+                            'Instruktur Lapangan • $companyName',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -513,7 +497,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   }
 
   // ============================================================================
-  // 7.1 SISWA BIMBINGAN TAB
+  // 7.1 NILAI PKL TAB (Sebelumnya Siswa Bimbingan)
   // ============================================================================
   Widget _buildSiswaTab() {
     return Scaffold(
@@ -522,7 +506,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
         child: Column(
           children: [
             SmartPklHeader(
-              title: 'Siswa Bimbingan DUDI',
+              title: 'Nilai PKL',
               onProfileTap: () => _onTabTapped(4),
             ),
             Expanded(
@@ -533,7 +517,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                     : _students.isEmpty
                         ? ListView(
                             children: [
-                              _buildEmptyState('Tidak ada siswa aktif yang ditempatkan di instansi Anda saat ini.'),
+                              _buildEmptyState('Tidak ada siswa yang perlu dinilai saat ini.'),
                             ],
                           )
                         : ListView.separated(
@@ -553,28 +537,271 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     );
   }
 
+  String _getGradeLabel(double score) {
+    if (score >= 90) return 'A';
+    if (score >= 80) return 'B';
+    if (score >= 70) return 'C';
+    if (score >= 60) return 'D';
+    return 'E';
+  }
+
+  void _showInputNilaiModal(String studentId, String studentName, double? initialScore) {
+    double tempScore = initialScore ?? 85.0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final predikat = _getGradeLabel(tempScore);
+            String predikatDesc = 'Sangat Baik';
+            if (tempScore < 70) {
+              predikatDesc = 'Kurang';
+            } else if (tempScore < 80) {
+              predikatDesc = 'Cukup';
+            } else if (tempScore < 90) {
+              predikatDesc = 'Baik';
+            }
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF2563EB), size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Beri Nilai PKL',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              studentName,
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Display Nilai & Predikat
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Nilai Instansi DU/DI',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tempScore.toStringAsFixed(0),
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Grade $predikat',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1D4ED8),
+                                ),
+                              ),
+                              Text(
+                                predikatDesc,
+                                style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: const Color(0xFF2563EB),
+                      thumbColor: const Color(0xFF2563EB),
+                      overlayColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                      valueIndicatorColor: const Color(0xFF1E40AF),
+                    ),
+                    child: Slider(
+                      value: tempScore,
+                      min: 0,
+                      max: 100,
+                      divisions: 100,
+                      label: tempScore.toStringAsFixed(0),
+                      onChanged: (val) {
+                        setModalState(() {
+                          tempScore = val;
+                        });
+                      },
+                    ),
+                  ),
+
+                  // Quick presets
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [75, 80, 85, 90, 95, 100].map((preset) {
+                      final isSelected = tempScore.round() == preset;
+                      return InkWell(
+                        onTap: () {
+                          setModalState(() {
+                            tempScore = preset.toDouble();
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$preset',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? Colors.white : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _studentScores[studentId] = tempScore;
+                            });
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Nilai PKL untuk $studentName berhasil disimpan: ${tempScore.toStringAsFixed(0)}'),
+                                backgroundColor: const Color(0xFF16A34A),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Simpan Nilai', style: TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildStudentListItem(Map<String, dynamic> student) {
     final name = student['name']?.toString() ?? 'Siswa PKL';
+    final studentId = student['id']?.toString() ?? student['nis']?.toString() ?? name;
     final kelas = student['class']?.toString() ?? 'XII RPL';
     final major = student['major']?.toString() ?? 'Teknologi Informasi';
     final initials = name.isNotEmpty
         ? name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
         : 'S';
 
-    final int attendancesCount = student['attendances_count'] is int
-        ? student['attendances_count'] as int
-        : (int.tryParse(student['attendances_count']?.toString() ?? '0') ?? 0);
-
-    final int logbooksCount = student['logbooks_count'] is int
-        ? student['logbooks_count'] as int
-        : (int.tryParse(student['logbooks_count']?.toString() ?? '0') ?? 0);
-
-    final int projectsCount = student['projects_count'] is int
-        ? student['projects_count'] as int
-        : (int.tryParse(student['projects_count']?.toString() ?? '0') ?? 0);
-
-    final status = (student['status'] ?? 'active').toString();
-    final bool isActive = status == 'active';
+    final double? currentScore = _studentScores[studentId] ??
+        (student['score'] != null
+            ? double.tryParse(student['score'].toString())
+            : (student['nilai'] != null ? double.tryParse(student['nilai'].toString()) : null));
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -593,7 +820,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Header: Avatar, Info Siswa & Status Pill
+          // 1. Header: Avatar & Nama Siswa (Keterangan status 'Aktif' dihilangkan)
           Row(
             children: [
               CircleAvatar(
@@ -611,153 +838,97 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '$kelas • $major',
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              StatusPill(
-                text: isActive ? 'Aktif' : 'Nonaktif',
-                style: isActive ? PillStyle.success : PillStyle.neutral,
-              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // 2. Metrics Row: Presensi, Logbook, Projek Akhir
+          // 2. Baris Nilai PKL & Tombol "Beri Nilai PKL" (Kotak presensi & logbook dihilangkan)
           Row(
             children: [
-              // Metric 1: Jumlah Absen / Presensi
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                    color: currentScore != null ? const Color(0xFFF5F3FF) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: currentScore != null ? const Color(0xFFDDD6FE) : const Color(0xFFE2E8F0),
+                    ),
                   ),
-                  child: Column(
+                  child: Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.how_to_reg_rounded, size: 14, color: Color(0xFF16A34A)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$attendancesCount',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF15803D),
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        Icons.stars_rounded,
+                        size: 20,
+                        color: currentScore != null ? const Color(0xFF7C3AED) : AppColors.textMuted,
                       ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Presensi',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF166534),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Nilai PKL (DU/DI)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: currentScore != null ? const Color(0xFF6D28D9) : AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              currentScore != null
+                                  ? '${currentScore.toStringAsFixed(0)} (${_getGradeLabel(currentScore)})'
+                                  : 'Belum Dinilai',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: currentScore != null ? const Color(0xFF5B21B6) : AppColors.textMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // Metric 2: Jumlah Logbook
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.assignment_turned_in_rounded, size: 14, color: Color(0xFF2563EB)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$logbooksCount',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF1D4ED8),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Logbook',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E40AF),
-                        ),
-                      ),
-                    ],
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: () => _showInputNilaiModal(studentId, name, currentScore),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: currentScore != null ? const Color(0xFF4F46E5) : const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-
-              // Metric 3: Nilai PKL
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAF5FF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE9D5FF)),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.grade_rounded, size: 14, color: Color(0xFF9333EA)),
-                          const SizedBox(width: 4),
-                          Text(
-                            (student['score'] ?? student['grade'] ?? student['final_score'] ?? student['nilai_pkl'] ?? (projectsCount > 0 ? '$projectsCount' : '-')).toString(),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF7E22CE),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Nilai PKL',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6B21A8),
-                        ),
-                      ),
-                    ],
-                  ),
+                icon: Icon(
+                  currentScore != null ? Icons.edit_note_rounded : Icons.add_task_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  currentScore != null ? 'Ubah Nilai' : 'Beri Nilai PKL',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -777,7 +948,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
         child: Column(
           children: [
             SmartPklHeader(
-              title: 'Verifikasi Logbook DUDI',
+              title: 'Verifikasi Logbook',
               onProfileTap: () => _onTabTapped(4),
             ),
             // Filter Pills (Semua, Menunggu, Disetujui, Ditolak)

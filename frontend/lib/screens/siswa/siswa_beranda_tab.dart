@@ -17,7 +17,7 @@ import '../../widgets/smart_pkl_header.dart';
 ///    -> Menghitung persentase presensi kehadiran siswa ("96%")
 /// ==============================================================================
 class SiswaBerandaTab extends StatefulWidget {
-  final Function(int)? onNavigateTab;
+  final Function(int, [int?])? onNavigateTab;
 
   const SiswaBerandaTab({
     super.key,
@@ -124,92 +124,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
         });
       }
     }
-  }
-
-  /// Dialog formulir Izin / Sakit untuk siswa
-  void _showIzinDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.edit_calendar_rounded, color: AppColors.primary, size: 24),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Pengajuan Izin / Sakit',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Siswa dapat mengajukan surat keterangan dokter (sakit) atau keperluan dinas/keluarga (izin) kepada Pembimbing DUDI.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Formulir pengajuan izin/sakit siap dikirim ke pembimbing.'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                  label: const Text('Buat Surat Pengajuan'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -373,13 +287,13 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
                           _buildMenuCard(
                             label: 'Izin / Sakit',
                             icon: Icons.edit_calendar_outlined,
-                            onTap: () => _showIzinDialog(context),
+                            onTap: () => widget.onNavigateTab?.call(1, 2),
                           ),
                           const SizedBox(width: 14),
                           _buildMenuCard(
                             label: 'Presensi',
                             icon: Icons.how_to_reg_rounded,
-                            onTap: () => widget.onNavigateTab?.call(1),
+                            onTap: () => widget.onNavigateTab?.call(1, 0),
                           ),
                         ],
                       ),

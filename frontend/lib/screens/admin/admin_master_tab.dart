@@ -922,72 +922,98 @@ class AdminMasterTabState extends State<AdminMasterTab> {
               ),
               const SizedBox(height: 12),
 
-              // Action Buttons Row: Edit & Hapus (Matching Screenshot 2)
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _showEditSiswaModal(item),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.edit_outlined, size: 15, color: Color(0xFF334155)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Edit',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF334155),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _confirmDeleteSiswa(id, name),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFDC2626)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Hapus',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFDC2626),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              // Action Buttons Row (Diselaraskan dengan tombol Data Master lainnya)
+              _buildCardActionButtons(
+                onDelete: () => _confirmDeleteSiswa(id, name),
+                onEdit: () => _showEditSiswaModal(item),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  /// Helper seragam untuk tombol Aksi Kartu (Hapus Outline Merah + Edit Biru Solid)
+  Widget _buildCardActionButtons({
+    required VoidCallback onDelete,
+    required VoidCallback onEdit,
+  }) {
+    return Row(
+      children: [
+        // Hapus Button (Red Outline)
+        Expanded(
+          child: InkWell(
+            onTap: onDelete,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Hapus',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFDC2626),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Edit Button (Solid Blue Button)
+        Expanded(
+          child: InkWell(
+            onTap: onEdit,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.edit_note_rounded, size: 18, color: Colors.white),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Edit',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1191,67 +1217,10 @@ class AdminMasterTabState extends State<AdminMasterTab> {
               ),
               const SizedBox(height: 12),
 
-              // Action Buttons Row: Edit & Hapus
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _showEditGuruModal(item),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.edit_outlined, size: 15, color: Color(0xFF334155)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Edit',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF334155),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _confirmDeleteGuru(id, name),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFDC2626)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Hapus',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFDC2626),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              // Action Buttons Row (Diselaraskan dengan tombol Data Master lainnya)
+              _buildCardActionButtons(
+                onDelete: () => _confirmDeleteGuru(id, name),
+                onEdit: () => _showEditGuruModal(item),
               ),
             ],
           ),
@@ -1360,22 +1329,24 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$studentCount Siswa PKL',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF2563EB),
+                  if (studentCount > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$studentCount Siswa PKL',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2563EB),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 10),
@@ -1426,14 +1397,31 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                   }
 
                   if (supervisor != null) {
+                    if (supervisor['user'] == null && _fieldSupervisors.isNotEmpty) {
+                      final supId = supervisor['id'];
+                      final found = _fieldSupervisors.firstWhere(
+                        (s) => s['id'] == supId,
+                        orElse: () => null,
+                      );
+                      if (found != null && found['user'] != null) {
+                        supervisor = found;
+                      }
+                    }
+
+                    final spvName = (supervisor['name'] ?? 'Pembimbing Lapangan').toString();
+                    final userObj = supervisor['user'] as Map<String, dynamic>?;
+                    final username = (userObj?['username'] ?? supervisor['username'] ?? supervisor['account']?['username'] ?? '-').toString();
+                    final userId = int.tryParse((userObj?['id'] ?? supervisor['user_id'] ?? supervisor['id'] ?? 0).toString()) ?? 0;
+                    final phone = (supervisor['phone'] ?? '').toString();
+
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
+                        color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFDCFCE7)),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1443,10 +1431,10 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFDCFCE7),
+                                  color: const Color(0xFFEFF6FF),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.person_pin_rounded, size: 16, color: Color(0xFF16A34A)),
+                                child: const Icon(Icons.person_pin_rounded, size: 16, color: Color(0xFF2563EB)),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -1454,12 +1442,12 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      (supervisor['name'] ?? 'Pembimbing Lapangan').toString(),
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF14532D)),
+                                      spvName,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                                     ),
                                     const Text(
                                       'PIC / Pembimbing DU/DI Terhubung',
-                                      style: TextStyle(fontSize: 10, color: Color(0xFF15803D)),
+                                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
                                     ),
                                   ],
                                 ),
@@ -1467,39 +1455,122 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: const Color(0xFFEFF6FF),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFF86EFAC)),
+                                  border: Border.all(color: const Color(0xFFBFDBFE)),
                                 ),
                                 child: const Text(
                                   'Akun DUDI',
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
                                 ),
                               ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.alternate_email_rounded, size: 14, color: Color(0xFF64748B)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Akun Login\n@$username',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      height: 1.3,
+                                      color: Color(0xFF334155),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (phone.isNotEmpty)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF64748B)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      phone,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.alternate_email_rounded, size: 13, color: Color(0xFF15803D)),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Username: ',
-                                style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                              const Icon(Icons.lock_outline_rounded, size: 16, color: Color(0xFF64748B)),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Password: ********',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
-                              Text(
-                                (supervisor['user']?['username'] ?? supervisor['username'] ?? '-').toString(),
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                              ),
-                              const Spacer(),
-                              if (supervisor['phone'] != null && supervisor['phone'].toString().isNotEmpty) ...[
-                                const Icon(Icons.phone_outlined, size: 13, color: Color(0xFF15803D)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  supervisor['phone'].toString(),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                              const SizedBox(width: 8),
+                              if (userId > 0)
+                                InkWell(
+                                  onTap: () => _showResetPasswordDialog(userId, spvName),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.lock_reset_rounded, size: 11, color: Color(0xFF2563EB)),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'hashing',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF2563EB),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              InkWell(
+                                onTap: () => _confirmUnlinkOrDeleteSupervisor(supervisor, item),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEE2E2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.person_remove_rounded, size: 13, color: Color(0xFFDC2626)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Hapus Akun Pembimbing',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -1661,81 +1732,9 @@ class AdminMasterTabState extends State<AdminMasterTab> {
               const SizedBox(height: 14),
 
               // 4. Action Buttons Row (Hapus & Edit)
-              Row(
-                children: [
-                  // Hapus Button (Red Outline)
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _confirmDeleteDudi(id, name),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFFCA5A5)),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Hapus',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFDC2626),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Edit Button (Solid Blue Button)
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _showEditDudiModal(item),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.25),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.edit_note_rounded, size: 18, color: Colors.white),
-                            SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Edit',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              _buildCardActionButtons(
+                onDelete: () => _confirmDeleteDudi(id, name),
+                onEdit: () => _showEditDudiModal(item),
               ),
             ],
           ),
@@ -2431,20 +2430,20 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
+                      color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.person_pin_rounded, size: 16, color: Color(0xFF16A34A)),
+                        Icon(Icons.person_pin_rounded, size: 16, color: Color(0xFF2563EB)),
                         SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             '2. AKUN PEMBIMBING LAPANGAN / DUDI (LOGIN)',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF15803D), letterSpacing: 0.5),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF1E40AF), letterSpacing: 0.5),
                           ),
                         ),
                       ],
@@ -3234,6 +3233,58 @@ class AdminMasterTabState extends State<AdminMasterTab> {
     );
   }
 
+  // ── DIALOG HAPUS AKUN PEMBIMBING DU/DI ──
+  void _confirmUnlinkOrDeleteSupervisor(dynamic supervisor, dynamic location) {
+    final spvName = supervisor['name'] ?? 'Pembimbing DU/DI';
+    final locName = location['name'] ?? 'Mitra DU/DI';
+    final spvId = int.tryParse(supervisor['id']?.toString() ?? '0') ?? 0;
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 22),
+            SizedBox(width: 8),
+            Text('Hapus Akun Pembimbing', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus akun pembimbing "$spvName" pada mitra "$locName"? Tindakan ini akan menghapus akun secara permanen.',
+          style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (spvId > 0) {
+                final res = await AdminService.deleteFieldSupervisor(spvId);
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(res['message']?.toString() ?? 'Akun pembimbing berhasil dihapus.'),
+                    backgroundColor: res['success'] == true ? const Color(0xFF16A34A) : Colors.red,
+                  ),
+                );
+                _fetchData();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus Akun'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── RESET PASSWORD MODAL (Connected to [hashing] badge) ──
   void _showResetPasswordDialog(int userId, String name) {
     final passCtrl = TextEditingController(text: 'password123');
@@ -3909,7 +3960,16 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                           );
                         }).toList(),
                         onChanged: (val) {
-                          setModalState(() => selectedLocationId = val);
+                          setModalState(() {
+                            selectedLocationId = val;
+                            if (val != null) {
+                              final loc = _locations.firstWhere((item) => item['id'] == val, orElse: () => null);
+                              if (loc != null && loc['field_supervisors'] is List && (loc['field_supervisors'] as List).isNotEmpty) {
+                                final spv = (loc['field_supervisors'] as List).first;
+                                selectedSupervisorId = int.tryParse(spv['id']?.toString() ?? '');
+                              }
+                            }
+                          });
                         },
                       ),
                     ),
@@ -4795,10 +4855,13 @@ class AdminMasterTabState extends State<AdminMasterTab> {
               if (isActive) ...[
                 const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
                 const SizedBox(width: 6),
-                const Text(
-                  'Periode ini tampil di Beranda & Dashboard Utama',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
+                const Expanded(
+                  child: Text(
+                    'Periode ini tampil di Beranda & Dashboard Utama',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
+                  ),
                 ),
+                const SizedBox(width: 8),
               ] else ...[
                 const Spacer(),
                 ElevatedButton.icon(
@@ -4813,8 +4876,71 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                     textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
+                const SizedBox(width: 8),
               ],
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _confirmDeletePeriode(id, name, isActive),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
+                  ),
+                ),
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeletePeriode(int id, String periodName, bool isActive) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Periode PKL', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          isActive
+              ? 'PERINGATAN: "$periodName" adalah periode yang sedang AKTIF!\n\nApakah Anda yakin ingin menghapusnya? Seluruh data penempatan dan logbook pada periode ini akan ikut terhapus permanen dari sistem.'
+              : 'Apakah Anda yakin ingin menghapus periode PKL "$periodName"? Seluruh data penempatan pada periode ini akan dihapus permanen dari sistem.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final res = await AdminService.deletePeriod(id);
+              if (!mounted) return;
+              if (res['success'] == true) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(res['message'] ?? 'Periode PKL berhasil dihapus!'),
+                    backgroundColor: const Color(0xFF16A34A),
+                  ),
+                );
+                await _fetchData();
+              } else {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(res['message'] ?? 'Gagal menghapus periode PKL.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Hapus'),
           ),
         ],
       ),

@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Percayai header proxy (X-Forwarded-Proto/Host) dari Cloudflare Tunnel agar asset() memakai HTTPS
+        $middleware->trustProxies(at: '*');
+
         // Register role middleware alias
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,

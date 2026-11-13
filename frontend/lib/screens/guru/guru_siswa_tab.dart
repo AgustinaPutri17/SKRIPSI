@@ -113,7 +113,7 @@ class _GuruSiswaTabState extends State<GuruSiswaTab> {
             SmartPklHeader(
               title: 'Siswa Bimbingan',
               subtitle: '${_allStudents.length} Siswa',
-              onProfileTap: () => widget.onNavigateTab?.call(4), // Tab Profil
+              onProfileTap: () => widget.onNavigateTab?.call(3), // Tab Profil
             ),
 
             if (_isLoading)

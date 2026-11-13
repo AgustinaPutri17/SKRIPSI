@@ -805,6 +805,52 @@ class AdminService {
     }
   }
 
+  /// ============================================================================
+  /// API Backend: Hapus Akun Pembimbing DU/DI
+  /// Endpoint: DELETE /api/admin/field-supervisors/{id}
+  /// Controller: App\Http\Controllers\Api\Admin\FieldSupervisorController@destroy
+  /// ============================================================================
+  static Future<Map<String, dynamic>> deleteFieldSupervisor(int id) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/admin/field-supervisors/$id');
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 6));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': data['message'] ?? 'Pembimbing DU/DI berhasil dihapus.', 'data': data['data']};
+      }
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menghapus pembimbing DU/DI.')};
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
+    }
+  }
+
+  /// ============================================================================
+  /// API Backend: Putuskan Hubungan Pembimbing DU/DI dari Lokasi
+  /// ============================================================================
+  static Future<Map<String, dynamic>> unlinkSupervisorFromLocation(int locationId) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/admin/locations/$locationId');
+      final headers = await _getHeaders();
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'field_supervisor_ids': [],
+        }),
+      ).timeout(const Duration(seconds: 6));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': 'Pembimbing DU/DI berhasil diputuskan dari mitra ini.'};
+      }
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal memutuskan pembimbing.')};
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // 4.7 MASTER DATA PERIODE PKL (periods)
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1058,6 +1104,27 @@ class AdminService {
   }
 
   /// ============================================================================
+  /// API Backend: 4.7 Master Data Periode PKL - Hapus Periode
+  /// Endpoint: DELETE /api/admin/periods/{id}
+  /// Controller: App\Http\Controllers\Api\Admin\PeriodController@destroy
+  /// ============================================================================
+  static Future<Map<String, dynamic>> deletePeriod(int id) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/admin/periods/$id');
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 6));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': data['message'] ?? 'Periode berhasil dihapus.', 'data': data['data']};
+      }
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menghapus periode.')};
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
+    }
+  }
+
+  /// ============================================================================
   /// API Backend: 4.8 Master Data Penempatan Siswa - Toggle Status (Aktif/Nonaktif)
   /// Endpoint: POST /api/admin/placements/{id}/toggle-status
   /// ============================================================================
@@ -1076,5 +1143,189 @@ class AdminService {
       return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 4.9 REKAPITULASI KEHADIRAN (ATTENDANCES) & LOGBOOK (JOURNALS)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /// ============================================================================
+  /// Endpoint: GET /api/admin/attendances
+  /// ============================================================================
+  static Future<Map<String, dynamic>?> getAttendances({
+    String? search,
+    String? status,
+    String? date,
+    String? startDate,
+    String? endDate,
+    int? locationId,
+    int page = 1,
+    int perPage = 50,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (status != null && status.isNotEmpty && status != 'all') queryParams['status'] = status;
+      if (date != null && date.isNotEmpty) queryParams['date'] = date;
+      if (startDate != null && startDate.isNotEmpty) queryParams['start_date'] = startDate;
+      if (endDate != null && endDate.isNotEmpty) queryParams['end_date'] = endDate;
+      if (locationId != null) queryParams['location_id'] = locationId.toString();
+
+      final uri = Uri.parse('${AuthService.baseUrl}/admin/attendances').replace(queryParameters: queryParams);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['data'] as Map<String, dynamic>?;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// ============================================================================
+  /// Endpoint: DELETE /api/admin/attendances/{id}
+  /// ============================================================================
+  static Future<Map<String, dynamic>> deleteAttendance(int id) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/admin/attendances/$id');
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 6));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': data['message'] ?? 'Data presensi berhasil dihapus.'};
+      }
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menghapus presensi.')};
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
+    }
+  }
+
+  /// ============================================================================
+  /// Endpoint: GET /api/admin/attendances/export
+  /// Mengambil file CSV string untuk diunduh langsung
+  /// ============================================================================
+  static Future<String?> exportAttendancesCsv({
+    String? search,
+    String? status,
+    String? date,
+    String? startDate,
+    String? endDate,
+    int? locationId,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (status != null && status.isNotEmpty && status != 'all') queryParams['status'] = status;
+      if (date != null && date.isNotEmpty) queryParams['date'] = date;
+      if (startDate != null && startDate.isNotEmpty) queryParams['start_date'] = startDate;
+      if (endDate != null && endDate.isNotEmpty) queryParams['end_date'] = endDate;
+      if (locationId != null) queryParams['location_id'] = locationId.toString();
+
+      final uri = Uri.parse('${AuthService.baseUrl}/admin/attendances/export').replace(queryParameters: queryParams);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.body;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// ============================================================================
+  /// Endpoint: GET /api/admin/logbooks
+  /// ============================================================================
+  static Future<Map<String, dynamic>?> getLogbooks({
+    String? search,
+    String? status,
+    String? date,
+    String? startDate,
+    String? endDate,
+    int? locationId,
+    int page = 1,
+    int perPage = 50,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (status != null && status.isNotEmpty && status != 'all') queryParams['status'] = status;
+      if (date != null && date.isNotEmpty) queryParams['date'] = date;
+      if (startDate != null && startDate.isNotEmpty) queryParams['start_date'] = startDate;
+      if (endDate != null && endDate.isNotEmpty) queryParams['end_date'] = endDate;
+      if (locationId != null) queryParams['location_id'] = locationId.toString();
+
+      final uri = Uri.parse('${AuthService.baseUrl}/admin/logbooks').replace(queryParameters: queryParams);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['data'] as Map<String, dynamic>?;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// ============================================================================
+  /// Endpoint: DELETE /api/admin/logbooks/{id}
+  /// ============================================================================
+  static Future<Map<String, dynamic>> deleteLogbook(int id) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/admin/logbooks/$id');
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 6));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': data['message'] ?? 'Data logbook berhasil dihapus.'};
+      }
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menghapus logbook.')};
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
+    }
+  }
+
+  /// ============================================================================
+  /// Endpoint: GET /api/admin/logbooks/export
+  /// ============================================================================
+  static Future<String?> exportLogbooksCsv({
+    String? search,
+    String? status,
+    String? date,
+    String? startDate,
+    String? endDate,
+    int? locationId,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (status != null && status.isNotEmpty && status != 'all') queryParams['status'] = status;
+      if (date != null && date.isNotEmpty) queryParams['date'] = date;
+      if (startDate != null && startDate.isNotEmpty) queryParams['start_date'] = startDate;
+      if (endDate != null && endDate.isNotEmpty) queryParams['end_date'] = endDate;
+      if (locationId != null) queryParams['location_id'] = locationId.toString();
+
+      final uri = Uri.parse('${AuthService.baseUrl}/admin/logbooks/export').replace(queryParameters: queryParams);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.body;
+      }
+    } catch (_) {}
+    return null;
+  }
 }
+
 

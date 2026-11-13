@@ -44,10 +44,15 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
     text: 'Gedung R&D Lt. 2, Jl. ZA. Pagar Alam No. 42, Gedong Meneng, Bandar Lampung',
   );
   final TextEditingController _radiusController = TextEditingController(text: '50');
+  final TextEditingController _latController = TextEditingController();
+  final TextEditingController _lngController = TextEditingController();
 
   double _latitude = -5.378921;
   double _longitude = 105.251412;
   double _gpsAccuracy = 4.0;
+  Offset _pinOffset = Offset.zero;
+  double _zoom = 1.0;
+  bool _isDraggingMap = false;
 
   TimeOfDay _checkInTime = const TimeOfDay(hour: 8, minute: 0);
   TimeOfDay _checkOutTime = const TimeOfDay(hour: 16, minute: 0);
@@ -80,6 +85,8 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
   @override
   void initState() {
     super.initState();
+    _latController.text = _latitude.toStringAsFixed(6);
+    _lngController.text = _longitude.toStringAsFixed(6);
     if (widget.initialLocation != null) {
       _applyLocationData(widget.initialLocation!);
     } else {
@@ -92,6 +99,8 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
     _nameController.dispose();
     _addressController.dispose();
     _radiusController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
   }
 
@@ -112,6 +121,9 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
       if (loc['longitude'] != null) {
         _longitude = double.tryParse(loc['longitude'].toString()) ?? _longitude;
       }
+      _latController.text = _latitude.toStringAsFixed(6);
+      _lngController.text = _longitude.toStringAsFixed(6);
+      _pinOffset = Offset.zero;
       if (loc['radius'] != null) {
         _radiusController.text = loc['radius'].toString();
       }
@@ -201,6 +213,9 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
         setState(() {
           _latitude = position.latitude;
           _longitude = position.longitude;
+          _latController.text = _latitude.toStringAsFixed(6);
+          _lngController.text = _longitude.toStringAsFixed(6);
+          _pinOffset = Offset.zero;
           _gpsAccuracy = position.accuracy > 0 ? position.accuracy : 4.0;
           _statusMessage = 'GPS Akurat ±${_gpsAccuracy.toStringAsFixed(0)}m';
           _isLoadingGps = false;
@@ -316,7 +331,7 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
         child: Column(
           children: [
             SmartPklHeader(
-              title: 'Detail Lokasi Dudi',
+              title: 'Lokasi PKL',
               subtitle: 'Penentuan Titik Koordinat Kantor',
               showBackButton: Navigator.canPop(context),
               onBackTap: () => Navigator.maybePop(context),
@@ -510,7 +525,7 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                           ),
                           const SizedBox(height: 14),
 
-                          // Visual Map Card Mockup Sesuai Gambar
+                          // Visual Map Card Mockup Sesuai Gambar (Interaktif: Geser & Klik Pin Langsung Menghitung Koordinat)
                           Container(
                             height: 250,
                             decoration: BoxDecoration(
@@ -518,204 +533,293 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: const Color(0xFFBAE6FD)),
                             ),
-                            child: Stack(
-                              children: [
-                                // Background Map Texture & Watermarks
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: CustomPaint(
-                                    size: const Size(double.infinity, 250),
-                                    painter: _MockupMapPainter(),
-                                  ),
-                                ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final double mapW = constraints.maxWidth;
+                                const double mapH = 250.0;
+                                final double centerX = mapW / 2;
+                                const double centerY = 95.0; // titik tengah map (di atas tombol Gunakan Lokasi)
+                                final double maxDx = (mapW / 2) - 45;
+                                const double maxDy = 65.0;
 
-                                // Radius Circle Geofence
-                                Center(
-                                  child: Container(
-                                    width: 150,
-                                    height: 150,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFF2563EB).withValues(alpha: 0.18),
-                                      border: Border.all(
-                                        color: const Color(0xFF2563EB).withValues(alpha: 0.5),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Container(
-                                        width: 80,
-                                        height: 80,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Stack(
+                                    children: [
+                                      // Area interaksi geser & klik peta
+                                      Positioned.fill(
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTapDown: (details) {
+                                            // Jangan proses jika menekan area tombol bawah
+                                            if (details.localPosition.dy > 185) return;
+                                            final double targetX = (details.localPosition.dx - centerX).clamp(-maxDx, maxDx);
+                                            final double targetY = (details.localPosition.dy - centerY).clamp(-maxDy, maxDy);
+                                            final Offset targetOffset = Offset(targetX, targetY);
+                                            final Offset delta = targetOffset - _pinOffset;
+                                            final double sensitivity = 0.000025 / _zoom;
+
+                                            setState(() {
+                                              _pinOffset = targetOffset;
+                                              _latitude -= delta.dy * sensitivity;
+                                              _longitude += delta.dx * sensitivity;
+                                              _latController.text = _latitude.toStringAsFixed(6);
+                                              _lngController.text = _longitude.toStringAsFixed(6);
+                                            });
+                                          },
+                                          onPanStart: (_) {
+                                            setState(() => _isDraggingMap = true);
+                                          },
+                                          onPanUpdate: (details) {
+                                            final double sensitivity = 0.000025 / _zoom;
+                                            final double newX = (_pinOffset.dx + details.delta.dx).clamp(-maxDx, maxDx);
+                                            final double newY = (_pinOffset.dy + details.delta.dy).clamp(-maxDy, maxDy);
+
+                                            setState(() {
+                                              _pinOffset = Offset(newX, newY);
+                                              _latitude -= details.delta.dy * sensitivity;
+                                              _longitude += details.delta.dx * sensitivity;
+                                              _latController.text = _latitude.toStringAsFixed(6);
+                                              _lngController.text = _longitude.toStringAsFixed(6);
+                                            });
+                                          },
+                                          onPanEnd: (_) {
+                                            setState(() => _isDraggingMap = false);
+                                          },
+                                          onPanCancel: () {
+                                            setState(() => _isDraggingMap = false);
+                                          },
+                                          child: CustomPaint(
+                                            size: Size(mapW, mapH),
+                                            painter: _MockupMapPainter(
+                                              panOffset: _pinOffset,
+                                              zoom: _zoom,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ),
 
-                                // Center Pin
-                                Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF2563EB),
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black26,
-                                              blurRadius: 8,
-                                              offset: Offset(0, 3),
+                                      // Pin & Radius Geofence (bergerak real-time mengikuti sentuhan / offset)
+                                      Positioned(
+                                        left: centerX + _pinOffset.dx - 75,
+                                        top: centerY + _pinOffset.dy - 75,
+                                        child: IgnorePointer(
+                                          child: SizedBox(
+                                            width: 150,
+                                            height: 150,
+                                            child: Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                // Outer Geofence Ring
+                                                AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 150),
+                                                  width: _isDraggingMap ? 160 : 150,
+                                                  height: _isDraggingMap ? 160 : 150,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: const Color(0xFF2563EB).withValues(alpha: 0.18),
+                                                    border: Border.all(
+                                                      color: const Color(0xFF2563EB).withValues(alpha: 0.5),
+                                                      width: 1.5,
+                                                    ),
+                                                  ),
+                                                ),
+
+                                                // Inner Geofence Ring
+                                                Container(
+                                                  width: 80,
+                                                  height: 80,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                                                  ),
+                                                ),
+
+                                                // Pin Marker
+                                                AnimatedScale(
+                                                  scale: _isDraggingMap ? 1.15 : 1.0,
+                                                  duration: const Duration(milliseconds: 150),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Container(
+                                                        padding: const EdgeInsets.all(8),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF2563EB),
+                                                          shape: BoxShape.circle,
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors.black.withValues(alpha: _isDraggingMap ? 0.35 : 0.2),
+                                                              blurRadius: _isDraggingMap ? 12 : 8,
+                                                              offset: Offset(0, _isDraggingMap ? 6 : 3),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.location_on_rounded,
+                                                          color: Colors.white,
+                                                          size: 24,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Container(
+                                                        width: 8,
+                                                        height: 4,
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black26,
+                                                          borderRadius: BorderRadius.circular(4),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // Top-Left GPS Status Pill
+                                      Positioned(
+                                        top: 12,
+                                        left: 12,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.95),
+                                            borderRadius: BorderRadius.circular(20),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.08),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF16A34A),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _statusMessage,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+
+                                      // Top-Right Zoom Buttons (+ / -)
+                                      Positioned(
+                                        top: 12,
+                                        right: 12,
+                                        child: Column(
+                                          children: [
+                                            GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  _zoom = (_zoom * 1.25).clamp(0.5, 3.0);
+                                                });
+                                              },
+                                              child: Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  boxShadow: const [
+                                                    BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                                                  ],
+                                                ),
+                                                child: const Icon(Icons.add, size: 18, color: AppColors.textPrimary),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  _zoom = (_zoom / 1.25).clamp(0.5, 3.0);
+                                                });
+                                              },
+                                              child: Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  boxShadow: const [
+                                                    BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                                                  ],
+                                                ),
+                                                child: const Icon(Icons.remove, size: 18, color: AppColors.textPrimary),
+                                              ),
                                             ),
                                           ],
                                         ),
-                                        child: const Icon(
-                                          Icons.location_on_rounded,
-                                          color: Colors.white,
-                                          size: 24,
-                                        ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      Container(
-                                        width: 8,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.black26,
-                                          borderRadius: BorderRadius.circular(4),
+
+                                      // Bottom Button: "Gunakan Lokasi Saya Sekarang"
+                                      Positioned(
+                                        bottom: 12,
+                                        left: 16,
+                                        right: 16,
+                                        child: ElevatedButton.icon(
+                                          onPressed: _isLoadingGps ? null : _getCurrentGpsLocation,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: const Color(0xFF2563EB),
+                                            elevation: 3,
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                              side: const BorderSide(color: Color(0xFFBFDBFE), width: 1),
+                                            ),
+                                          ),
+                                          icon: _isLoadingGps
+                                              ? const SizedBox(
+                                                  width: 16,
+                                                  height: 16,
+                                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                                )
+                                              : const Icon(Icons.my_location_rounded, size: 18, color: Color(0xFF2563EB)),
+                                          label: Text(
+                                            _isLoadingGps ? 'Mendeteksi...' : 'Gunakan Lokasi Saya Sekarang',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF2563EB),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-
-                                // Top-Left GPS Status Pill
-                                Positioned(
-                                  top: 12,
-                                  left: 12,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.95),
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.08),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF16A34A),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _statusMessage,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                // Top-Right Zoom Buttons
-                                Positioned(
-                                  top: 12,
-                                  right: 12,
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(8),
-                                          boxShadow: const [
-                                            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-                                          ],
-                                        ),
-                                        child: const Icon(Icons.add, size: 18, color: AppColors.textPrimary),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(8),
-                                          boxShadow: const [
-                                            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-                                          ],
-                                        ),
-                                        child: const Icon(Icons.remove, size: 18, color: AppColors.textPrimary),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Bottom Button: "Gunakan Lokasi Saya Sekarang"
-                                Positioned(
-                                  bottom: 12,
-                                  left: 16,
-                                  right: 16,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _isLoadingGps ? null : _getCurrentGpsLocation,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: const Color(0xFF2563EB),
-                                      elevation: 3,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        side: const BorderSide(color: Color(0xFFBFDBFE), width: 1),
-                                      ),
-                                    ),
-                                    icon: _isLoadingGps
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          )
-                                        : const Icon(Icons.my_location_rounded, size: 18, color: Color(0xFF2563EB)),
-                                    label: Text(
-                                      _isLoadingGps ? 'Mendeteksi...' : 'Gunakan Lokasi Saya Sekarang',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF2563EB),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(height: 8),
 
-                          // Petunjuk drag pin
+                          // Petunjuk interaksi pin
                           const Row(
                             children: [
                               Icon(Icons.touch_app_rounded, size: 16, color: AppColors.textMuted),
                               SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Geser pin atau gunakan lokasi saya sekarang untuk titik gerbang/lobi kantor yang tepat.',
+                                  'Geser pin atau klik titik pada peta untuk menentukan koordinat presisi secara otomatis.',
                                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                                 ),
                               ),
@@ -723,12 +827,12 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                           ),
                           const SizedBox(height: 14),
 
-                          // Latitude & Longitude Box Sesuai Mockup
+                          // Latitude & Longitude Box (Interaktif: Terhitung otomatis saat pin digeser / dapat diedit manual)
                           Row(
                             children: [
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFF1F5F9),
                                     borderRadius: BorderRadius.circular(14),
@@ -749,16 +853,33 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                                               color: AppColors.textSecondary,
                                             ),
                                           ),
+                                          Spacer(),
+                                          Icon(Icons.edit_outlined, size: 12, color: AppColors.textMuted),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _latitude.toStringAsFixed(6),
+                                      const SizedBox(height: 2),
+                                      TextField(
+                                        controller: _latController,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                         style: const TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           color: Color(0xFF2563EB),
                                         ),
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(vertical: 2),
+                                          border: InputBorder.none,
+                                          hintText: '-5.123456',
+                                        ),
+                                        onChanged: (val) {
+                                          final parsed = double.tryParse(val.trim().replaceAll(',', '.'));
+                                          if (parsed != null) {
+                                            setState(() {
+                                              _latitude = parsed;
+                                            });
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
@@ -767,7 +888,7 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFF1F5F9),
                                     borderRadius: BorderRadius.circular(14),
@@ -788,16 +909,33 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                                               color: AppColors.textSecondary,
                                             ),
                                           ),
+                                          Spacer(),
+                                          Icon(Icons.edit_outlined, size: 12, color: AppColors.textMuted),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _longitude.toStringAsFixed(6),
+                                      const SizedBox(height: 2),
+                                      TextField(
+                                        controller: _lngController,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                         style: const TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           color: Color(0xFF2563EB),
                                         ),
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(vertical: 2),
+                                          border: InputBorder.none,
+                                          hintText: '105.123456',
+                                        ),
+                                        onChanged: (val) {
+                                          final parsed = double.tryParse(val.trim().replaceAll(',', '.'));
+                                          if (parsed != null) {
+                                            setState(() {
+                                              _longitude = parsed;
+                                            });
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
@@ -1130,48 +1268,7 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
 
-                                // Box Penjelasan Logika Otomatis Backend
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF0FDF4),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFFBBF7D0)),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Row(
-                                        children: [
-                                          Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF16A34A)),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Logika Penentuan Otomatis Backend:',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
-                                              color: Color(0xFF166534),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        '• Hadir: Siswa check-in <= ${_formatTimeOfDay(_checkInTime)} WIB\n'
-                                        '• Terlambat: Siswa check-in > ${_formatTimeOfDay(_checkInTime)} WIB (menit keterlambatan dicatat otomatis)\n'
-                                        '• Alfa: Tidak presensi & tidak ada izin sampai lewat jam kerja berakhir\n'
-                                        '• Izin/Sakit: Surat izin/dokter telah diverifikasi Guru Pembimbing',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: Color(0xFF14532D),
-                                          height: 1.45,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ],
                             ),
                           ),
@@ -1203,32 +1300,42 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
 
 /// Custom painter untuk menciptakan visual mockup peta yang bersih & modern
 class _MockupMapPainter extends CustomPainter {
+  final Offset panOffset;
+  final double zoom;
+
+  _MockupMapPainter({this.panOffset = Offset.zero, this.zoom = 1.0});
+
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(panOffset.dx * 0.25, panOffset.dy * 0.25);
+
     final bgPaint = Paint()..color = const Color(0xFFE8F0FE);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+    canvas.drawRect(Rect.fromLTWH(-60, -60, size.width + 120, size.height + 120), bgPaint);
+
+    final double effectiveZoom = zoom.clamp(0.7, 1.6);
 
     final roadPaint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 14
+      ..strokeWidth = 14 * effectiveZoom
       ..style = PaintingStyle.stroke;
 
     final roadOutline = Paint()
       ..color = const Color(0xFFD0E1FD)
-      ..strokeWidth = 18
+      ..strokeWidth = 18 * effectiveZoom
       ..style = PaintingStyle.stroke;
 
     // Jalan arteri utama
     final Path roadPath1 = Path()
-      ..moveTo(0, size.height * 0.4)
-      ..quadraticBezierTo(size.width * 0.5, size.height * 0.6, size.width, size.height * 0.3);
+      ..moveTo(-30, size.height * 0.4)
+      ..quadraticBezierTo(size.width * 0.5, size.height * 0.6, size.width + 30, size.height * 0.3);
 
     canvas.drawPath(roadPath1, roadOutline);
     canvas.drawPath(roadPath1, roadPaint);
 
     final Path roadPath2 = Path()
-      ..moveTo(size.width * 0.4, 0)
-      ..lineTo(size.width * 0.6, size.height);
+      ..moveTo(size.width * 0.4, -30)
+      ..lineTo(size.width * 0.6, size.height + 30);
 
     canvas.drawPath(roadPath2, roadOutline);
     canvas.drawPath(roadPath2, roadPaint);
@@ -1252,8 +1359,12 @@ class _MockupMapPainter extends CustomPainter {
       ),
       buildingPaint,
     );
+
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _MockupMapPainter oldDelegate) {
+    return oldDelegate.panOffset != panOffset || oldDelegate.zoom != zoom;
+  }
 }

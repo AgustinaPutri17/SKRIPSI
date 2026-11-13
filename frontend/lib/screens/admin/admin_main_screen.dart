@@ -110,17 +110,17 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
               ),
               label: 'Master',
             ),
-            // 3. Nilai PKL
+            // 3. Rekap (Kehadiran, Logbook, & Nilai)
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.fact_check_outlined, size: 22),
+                child: Icon(Icons.assessment_outlined, size: 22),
               ),
               activeIcon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.fact_check_rounded, size: 22),
+                child: Icon(Icons.assessment_rounded, size: 22),
               ),
-              label: 'Nilai',
+              label: 'Rekap',
             ),
             // 4. Profil & Pengaturan Kredensial 4.2
             BottomNavigationBarItem(

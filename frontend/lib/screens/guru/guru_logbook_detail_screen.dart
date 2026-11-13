@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/kd_indicators.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/teacher_service.dart';
 
@@ -67,6 +68,8 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
     });
 
     if (res['success'] == true) {
+      widget.logbook['teacher_note'] = note;
+      widget.logbook['has_teacher_note'] = true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(res['message'] ?? 'Catatan bimbingan berhasil disimpan dan dikirim ke siswa!'),
@@ -171,10 +174,14 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
         attendance?['check_out_photo_url']?.toString();
 
     final activityTitle = logbook['activity']?.toString() ?? 'Aktivitas PKL';
-    final activityDescription = logbook['description']?.toString() ?? 
-        logbook['activity']?.toString() ?? 
-        logbook['activities']?.toString() ?? 
-        'Membuat mockup aplikasi sesuai dengan rancangan seruu bgt';
+    final parsedKd = KdIndicators.extractFromActivity(
+      activityTitle,
+      logbook['description']?.toString() ?? '',
+    );
+    final activityDescription = logbook['description']?.toString() ??
+        logbook['activity']?.toString() ??
+        logbook['activities']?.toString() ??
+        parsedKd.description;
     final activityResult = logbook['result']?.toString();
     final activityObstacles = logbook['obstacles']?.toString();
 
@@ -356,19 +363,26 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
                                 color: Color(0xFF334155),
                               ),
                             ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEDE9FE),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'KD 2 • Layout Responsif',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF6D28D9),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDE9FE),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'KD ${parsedKd.kdNumber} • ${KdIndicators.titleFor(parsedKd.kdNumber)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF6D28D9),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -687,22 +701,22 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              titleIcon,
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Validasi Industri (DUDI)',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
-                                ),
+                          titleIcon,
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Validasi Industri (DUDI)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
                               ),
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
                             _formatDateSafe(logbook['verified_at'], logbookDate),
                             style: const TextStyle(
@@ -809,17 +823,35 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.school_rounded, size: 18, color: Color(0xFF2563EB)),
-                      SizedBox(width: 8),
-                      Text(
-                        'Catatan & Bimbingan Guru SMK',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
+                    children: [
+                      const Icon(Icons.school_rounded, size: 18, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Catatan Guru Pembimbing',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      if (widget.logbook['teacher_note'] != null && widget.logbook['teacher_note'].toString().trim().isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFBFDBFE), width: 0.8),
+                          ),
+                          child: const Text(
+                            'Sudah Diulas',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -864,7 +896,11 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
                             )
                           : const Icon(Icons.send_rounded, size: 16, color: Colors.white),
                       label: Text(
-                        _isSending ? 'Mengirim...' : 'Kirim Catatan Guru',
+                        _isSending
+                            ? 'Menyimpan...'
+                            : (widget.logbook['teacher_note'] != null && widget.logbook['teacher_note'].toString().trim().isNotEmpty
+                                ? 'Perbarui Catatan Guru'
+                                : 'Kirim Catatan Guru'),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,

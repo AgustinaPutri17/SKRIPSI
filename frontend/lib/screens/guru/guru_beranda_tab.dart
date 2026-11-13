@@ -20,7 +20,8 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
   bool _isLoading = true;
 
   // Header State
-  String _teacherName = 'Budi Santoso, S.Pd.';
+  String _teacherName = 'Guru Pembimbing';
+  String _schoolName = 'SMKN 2 Bandar Lampung';
 
   // Statistics from /api/teacher/dashboard
   int _totalStudents = 24;
@@ -50,6 +51,10 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
         if (mounted) {
           setState(() {
             _teacherName = cachedUser['name'].toString();
+            final profile = cachedUser['profile'] ?? cachedUser['teacher'];
+            if (profile != null && profile['school_name'] != null && profile['school_name'].toString().trim().isNotEmpty) {
+              _schoolName = profile['school_name'].toString().trim();
+            }
           });
         }
       }
@@ -99,7 +104,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
             // Header SMART PKL Beranda Guru
             SmartPklHeader(
               title: 'Beranda',
-              onProfileTap: () => widget.onNavigateTab?.call(4),
+              onProfileTap: () => widget.onNavigateTab?.call(3),
             ),
 
             if (_isLoading)
@@ -120,41 +125,46 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          'Halo, $_teacherName 👋',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                      // Greeting & Teacher Info (Konsisten dengan DUDI & Siswa)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Halo, $_teacherName 👋',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Guru Pembimbing • $_schoolName',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
                       ),
-                      // 4 Quick Navigation Action Cards (Rekap, Verifikasi, Ujian, Profil)
+                      const SizedBox(height: 16),
+                      // 3 Quick Navigation Action Cards (Izin & Sakit, Logbook, Profil)
                       Row(
                         children: [
                           Expanded(
                             child: _buildHeaderActionTile(
-                              icon: Icons.calendar_month_outlined,
-                              label: 'Rekap ($_attendanceToday/$_totalStudents)',
-                              onTap: () => widget.onNavigateTab?.call(1), // Tab Rekap
+                              icon: Icons.medical_services_outlined,
+                              label: 'Izin & Sakit',
+                              onTap: () => widget.onNavigateTab?.call(1), // Tab Izin & Sakit
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: _buildHeaderActionTile(
                               icon: Icons.fact_check_outlined,
-                              label: 'Verifikasi ($_journalsPending)',
-                              onTap: () => widget.onNavigateTab?.call(2), // Tab Verifikasi
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildHeaderActionTile(
-                              icon: Icons.assignment_outlined,
-                              label: 'Ujian',
-                              onTap: () => widget.onNavigateTab?.call(3), // Tab Ujian
+                              label: 'Logbook ($_journalsPending)',
+                              onTap: () => widget.onNavigateTab?.call(2), // Tab Logbook
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -162,7 +172,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                             child: _buildHeaderActionTile(
                               icon: Icons.person_outline_rounded,
                               label: 'Profil',
-                              onTap: () => widget.onNavigateTab?.call(4), // Tab Profil
+                              onTap: () => widget.onNavigateTab?.call(3), // Tab Profil
                             ),
                           ),
                         ],
@@ -252,6 +262,11 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                               logbook['attendance']?['check_out_photo_url']?.toString();
                           final fotoAktivitas = logbook['photo_url']?.toString();
 
+                          final teacherComment = logbook['teacher_note']?.toString();
+                          final hasTeacherComment = (teacherComment != null && teacherComment.trim().isNotEmpty) ||
+                              (logbook['has_teacher_note'] == true);
+                          final teacherAuthor = logbook['teacher_name']?.toString() ?? _teacherName;
+
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: _buildMonitoringCard(
@@ -272,8 +287,23 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                               isRejected: isRejected,
                               instrukturName: verifierName,
                               dudiNotes: '“$verificationNotes”',
+                              teacherNotes: teacherComment,
+                              hasTeacherNotes: hasTeacherComment,
+                              teacherName: teacherAuthor,
                               showUlasanButton: true,
                               onUlasanTap: () => _showBeriCatatanModal(context, logbook, student),
+                              onCardTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => GuruLogbookDetailScreen(
+                                      logbook: logbook,
+                                      student: student,
+                                    ),
+                                  ),
+                                );
+                                _loadAllDashboardData();
+                              },
                             ),
                           );
                         }),
@@ -461,6 +491,12 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                             final res = await TeacherService.addComment(id: journalId, comment: note);
                             setModalState(() => isSubmitting = false);
                             if (res['success'] == true) {
+                              if (mounted) {
+                                setState(() {
+                                  logbook['teacher_note'] = note;
+                                  logbook['has_teacher_note'] = true;
+                                });
+                              }
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -490,7 +526,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                           )
                         : const Icon(Icons.send_rounded, size: 16, color: Colors.white),
                     label: Text(
-                      isSubmitting ? 'Mengirim...' : 'Kirim Catatan',
+                      isSubmitting ? 'Mengirim...' : (initialNote.isNotEmpty ? 'Simpan Catatan' : 'Kirim Catatan'),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -504,9 +540,9 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                 const SizedBox(height: 10),
                 Center(
                   child: TextButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(ctx);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => GuruLogbookDetailScreen(
@@ -515,6 +551,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                           ),
                         ),
                       );
+                      _loadAllDashboardData();
                     },
                     icon: const Icon(Icons.visibility_outlined, size: 14, color: Color(0xFF2563EB)),
                     label: const Text(
@@ -648,8 +685,12 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
     bool isRejected = false,
     required String instrukturName,
     required String dudiNotes,
+    String? teacherNotes,
+    bool hasTeacherNotes = false,
+    String teacherName = '',
     required bool showUlasanButton,
     required VoidCallback onUlasanTap,
+    VoidCallback? onCardTap,
   }) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -725,6 +766,37 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: hasTeacherNotes ? const Color(0xFFEFF6FF) : const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: hasTeacherNotes ? const Color(0xFFBFDBFE) : const Color(0xFFFDE68A),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasTeacherNotes ? Icons.check_circle_rounded : Icons.pending_outlined,
+                      size: 11,
+                      color: hasTeacherNotes ? const Color(0xFF2563EB) : const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      hasTeacherNotes ? 'Sudah Diulas' : 'Belum Diulas',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: hasTeacherNotes ? const Color(0xFF1D4ED8) : const Color(0xFFB45309),
                       ),
                     ),
                   ],
@@ -942,26 +1014,74 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
           ),
           const SizedBox(height: 12),
 
-          // Tombol Beri Catatan (Biru)
+          // Catatan Guru Pembimbing Subcard (Biru)
+          if (teacherNotes != null && teacherNotes.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.school_rounded, size: 12, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 4),
+                      Text(
+                        teacherName.isNotEmpty ? 'Catatan Guru Pembimbing ($teacherName):' : 'Catatan Guru Pembimbing:',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E40AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '“$teacherNotes”',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                      color: Color(0xFF1E3A8A),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+
+          // Tombol Beri Catatan / Ubah Catatan Guru (Biru)
           if (showUlasanButton)
             SizedBox(
-              width: 140,
               height: 36,
               child: ElevatedButton.icon(
                 onPressed: onUlasanTap,
-                icon: const Icon(Icons.rate_review_rounded, size: 14, color: Colors.white),
-                label: const Text(
-                  'Beri Catatan',
-                  style: TextStyle(
+                icon: Icon(
+                  hasTeacherNotes ? Icons.edit_note_rounded : Icons.rate_review_rounded,
+                  size: 14,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  hasTeacherNotes ? 'Ubah Catatan Guru' : 'Beri Catatan',
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: hasTeacherNotes ? const Color(0xFF1D4ED8) : const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
                   elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),

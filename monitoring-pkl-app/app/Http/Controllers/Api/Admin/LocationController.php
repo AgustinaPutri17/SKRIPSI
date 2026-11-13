@@ -17,7 +17,7 @@ class LocationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Location::with('fieldSupervisors');
+        $query = Location::with('fieldSupervisors.user');
 
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
@@ -52,12 +52,12 @@ class LocationController extends Controller
             $location->fieldSupervisors()->sync($request->field_supervisor_ids);
         }
 
-        return $this->created(new LocationResource($location->load('fieldSupervisors')));
+        return $this->created(new LocationResource($location->load('fieldSupervisors.user')));
     }
 
     public function show(int $id): JsonResponse
     {
-        $location = Location::with('fieldSupervisors')->findOrFail($id);
+        $location = Location::with('fieldSupervisors.user')->findOrFail($id);
         return $this->success(new LocationResource($location));
     }
 
@@ -70,7 +70,7 @@ class LocationController extends Controller
             $location->fieldSupervisors()->sync($request->field_supervisor_ids);
         }
 
-        return $this->success(new LocationResource($location->fresh('fieldSupervisors')), 'Lokasi berhasil diperbarui.');
+        return $this->success(new LocationResource($location->fresh('fieldSupervisors.user')), 'Lokasi berhasil diperbarui.');
     }
 
     /**
@@ -87,7 +87,23 @@ class LocationController extends Controller
                 $placement->leaveRequests()->delete();
                 $placement->delete();
             }
+
+            // Hapus juga akun pembimbing DU/DI yang terhubung ke mitra ini
+            $supervisors = $location->fieldSupervisors()->get();
             $location->fieldSupervisors()->detach();
+
+            foreach ($supervisors as $supervisor) {
+                // Jika pembimbing ini tidak terhubung ke lokasi mitra lain, hapus akunnya permanen
+                if ($supervisor->locations()->count() === 0) {
+                    $supervisor->placements()->update(['field_supervisor_id' => null]);
+                    if ($supervisor->user) {
+                        $supervisor->user->tokens()->delete();
+                        $supervisor->user->delete();
+                    }
+                    $supervisor->delete();
+                }
+            }
+
             $location->delete();
         });
 

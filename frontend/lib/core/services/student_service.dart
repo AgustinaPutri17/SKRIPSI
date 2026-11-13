@@ -172,6 +172,7 @@ class StudentService {
     required double longitude,
     required double accuracy,
     String? photoPath,
+    XFile? photoFile,
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -187,8 +188,33 @@ class StudentService {
       request.fields['longitude'] = longitude.toString();
       request.fields['accuracy'] = accuracy.toString();
 
-      if (photoPath != null && photoPath.isNotEmpty) {
-        request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+      if (photoFile != null) {
+        final bytes = await photoFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'photo',
+          bytes,
+          filename: photoFile.name.isNotEmpty ? photoFile.name : 'selfie.jpg',
+        ));
+      } else if (photoPath != null && photoPath.isNotEmpty) {
+        if (kIsWeb) {
+          try {
+            final xfile = XFile(photoPath);
+            final bytes = await xfile.readAsBytes();
+            request.files.add(http.MultipartFile.fromBytes(
+              'photo',
+              bytes,
+              filename: 'selfie.jpg',
+            ));
+          } catch (_) {
+            request.files.add(http.MultipartFile.fromBytes(
+              'photo',
+              [137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 96, 0, 0, 0, 2, 0, 1, 226, 33, 188, 51, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130],
+              filename: 'selfie.png',
+            ));
+          }
+        } else {
+          request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+        }
       } else {
         request.files.add(http.MultipartFile.fromBytes(
           'photo',
@@ -197,7 +223,7 @@ class StudentService {
         ));
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 10));
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
       final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
 
@@ -220,6 +246,7 @@ class StudentService {
     required double longitude,
     required double accuracy,
     String? photoPath,
+    XFile? photoFile,
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -235,8 +262,33 @@ class StudentService {
       request.fields['longitude'] = longitude.toString();
       request.fields['accuracy'] = accuracy.toString();
 
-      if (photoPath != null && photoPath.isNotEmpty) {
-        request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+      if (photoFile != null) {
+        final bytes = await photoFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'photo',
+          bytes,
+          filename: photoFile.name.isNotEmpty ? photoFile.name : 'selfie.jpg',
+        ));
+      } else if (photoPath != null && photoPath.isNotEmpty) {
+        if (kIsWeb) {
+          try {
+            final xfile = XFile(photoPath);
+            final bytes = await xfile.readAsBytes();
+            request.files.add(http.MultipartFile.fromBytes(
+              'photo',
+              bytes,
+              filename: 'selfie.jpg',
+            ));
+          } catch (_) {
+            request.files.add(http.MultipartFile.fromBytes(
+              'photo',
+              [137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 96, 0, 0, 0, 2, 0, 1, 226, 33, 188, 51, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130],
+              filename: 'selfie.png',
+            ));
+          }
+        } else {
+          request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+        }
       } else {
         request.files.add(http.MultipartFile.fromBytes(
           'photo',
@@ -245,7 +297,7 @@ class StudentService {
         ));
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 10));
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
       final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
 
@@ -588,6 +640,7 @@ class StudentService {
     required String endDate,
     required String reason,
     String? attachmentPath,
+    XFile? attachmentFile,
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -604,8 +657,27 @@ class StudentService {
       request.fields['end_date'] = endDate;
       request.fields['reason'] = reason;
 
-      if (attachmentPath != null && attachmentPath.isNotEmpty) {
-        request.files.add(await http.MultipartFile.fromPath('attachment', attachmentPath));
+      if (attachmentFile != null) {
+        final bytes = await attachmentFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'attachment',
+          bytes,
+          filename: attachmentFile.name.isNotEmpty ? attachmentFile.name : 'attachment.jpg',
+        ));
+      } else if (attachmentPath != null && attachmentPath.isNotEmpty) {
+        if (kIsWeb) {
+          try {
+            final xfile = XFile(attachmentPath);
+            final bytes = await xfile.readAsBytes();
+            request.files.add(http.MultipartFile.fromBytes(
+              'attachment',
+              bytes,
+              filename: 'attachment.jpg',
+            ));
+          } catch (_) {}
+        } else {
+          request.files.add(await http.MultipartFile.fromPath('attachment', attachmentPath));
+        }
       }
 
       final streamedResponse = await request.send().timeout(const Duration(seconds: 12));

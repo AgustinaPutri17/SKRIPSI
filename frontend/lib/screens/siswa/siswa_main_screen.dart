@@ -20,6 +20,8 @@ class SiswaMainScreen extends StatefulWidget {
 
 class _SiswaMainScreenState extends State<SiswaMainScreen> {
   late int _currentIndex;
+  int _presensiSubTab = 0;
+  Key _presensiKey = UniqueKey();
 
   @override
   void initState() {
@@ -27,9 +29,13 @@ class _SiswaMainScreenState extends State<SiswaMainScreen> {
     _currentIndex = widget.initialIndex;
   }
 
-  void _onTabTapped(int index) {
+  void _onTabTapped(int index, [int? subTab]) {
     setState(() {
       _currentIndex = index.clamp(0, 4);
+      if (subTab != null) {
+        _presensiSubTab = subTab;
+        _presensiKey = UniqueKey();
+      }
     });
   }
 
@@ -37,7 +43,11 @@ class _SiswaMainScreenState extends State<SiswaMainScreen> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       SiswaBerandaTab(onNavigateTab: _onTabTapped),
-      SiswaPresensiTab(onNavigateTab: _onTabTapped),
+      SiswaPresensiTab(
+        key: _presensiKey,
+        initialSubTab: _presensiSubTab,
+        onNavigateTab: _onTabTapped,
+      ),
       SiswaLogbookTab(onNavigateTab: _onTabTapped),
       SiswaProjekTab(onNavigateTab: _onTabTapped),
       const SiswaProfilTab(),

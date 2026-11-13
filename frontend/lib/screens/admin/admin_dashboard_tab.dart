@@ -281,7 +281,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
                       // 3. Akses Cepat Data Master (Matching Screenshot 1)
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -297,64 +297,75 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Akses Cepat Data Master',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF0F172A),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Akses Cepat Data Master',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF0F172A),
+                                    ),
                                   ),
-                                ),
-                                InkWell(
-                                  onTap: () => widget.onNavigateTab?.call(1, subIndex: 0),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                    child: Text(
-                                      'Kelola',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF2563EB),
+                                  InkWell(
+                                    onTap: () => widget.onNavigateTab?.call(1, subIndex: 0),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      child: Text(
+                                        'Kelola',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF2563EB),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildQuickActionButton(
-                                  label: 'Data Guru',
-                                  icon: Icons.school_outlined,
-                                  color: const Color(0xFF2563EB),
-                                  bgColor: const Color(0xFFEFF6FF),
-                                  onTap: () => widget.onNavigateTab?.call(1, subIndex: 1),
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    label: 'Guru Pembimbing',
+                                    icon: Icons.badge_outlined,
+                                    color: const Color(0xFF2563EB),
+                                    bgColor: const Color(0xFFEFF6FF),
+                                    onTap: () => widget.onNavigateTab?.call(1, subIndex: 1),
+                                  ),
                                 ),
-                                _buildQuickActionButton(
-                                  label: 'Data Siswa',
-                                  icon: Icons.badge_outlined,
-                                  color: const Color(0xFF2563EB),
-                                  bgColor: const Color(0xFFEFF6FF),
-                                  onTap: () => widget.onNavigateTab?.call(1, subIndex: 0),
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    label: 'Data Siswa',
+                                    icon: Icons.school_outlined,
+                                    color: const Color(0xFF2563EB),
+                                    bgColor: const Color(0xFFEFF6FF),
+                                    onTap: () => widget.onNavigateTab?.call(1, subIndex: 0),
+                                  ),
                                 ),
-                                _buildQuickActionButton(
-                                  label: 'Mitra DU/DI',
-                                  icon: Icons.business_outlined,
-                                  color: const Color(0xFF2563EB),
-                                  bgColor: const Color(0xFFEFF6FF),
-                                  onTap: () => widget.onNavigateTab?.call(1, subIndex: 2),
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    label: 'Penempatan',
+                                    icon: Icons.assignment_outlined,
+                                    color: const Color(0xFF2563EB),
+                                    bgColor: const Color(0xFFEFF6FF),
+                                    onTap: () => widget.onNavigateTab?.call(1, subIndex: 3),
+                                  ),
                                 ),
-                                _buildQuickActionButton(
-                                  label: 'Profil',
-                                  icon: Icons.person_outline_rounded,
-                                  color: const Color(0xFF2563EB),
-                                  bgColor: const Color(0xFFEFF6FF),
-                                  onTap: () => widget.onNavigateTab?.call(3),
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    label: 'Periode PKL',
+                                    icon: Icons.date_range_rounded,
+                                    color: const Color(0xFF2563EB),
+                                    bgColor: const Color(0xFFEFF6FF),
+                                    onTap: () => widget.onNavigateTab?.call(1, subIndex: 4),
+                                  ),
                                 ),
                               ],
                             ),
@@ -541,12 +552,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               Expanded(
                 child: Text(
                   title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF64748B),
+                    height: 1.2,
                   ),
                 ),
               ),
@@ -604,25 +616,30 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
                 color: bgColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(height: 8),
             Text(
               label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF334155),
+                height: 1.2,
               ),
             ),
           ],

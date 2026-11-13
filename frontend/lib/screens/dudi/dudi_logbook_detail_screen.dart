@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/kd_indicators.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/supervisor_service.dart';
 import '../../widgets/smart_pkl_header.dart';
@@ -37,7 +38,6 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
   bool _isApproving = false;
   bool _isRejecting = false;
-  int _selectedSubNav = 0; // 0: Logbook, 1: Projek, 2: Penilaian
 
   late Map<String, dynamic> _currentJournal;
 
@@ -74,66 +74,11 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
   }
 
   Map<String, dynamic> _extractKdAndDescription(String rawActivity, String rawDesc) {
-    String kdName = '';
-    int kdNumber = 0;
-    String cleanDescription = rawDesc.trim();
-
-    if (rawActivity.startsWith('[') && rawActivity.contains(']')) {
-      kdName = rawActivity.substring(1, rawActivity.indexOf(']')).trim();
-      if (cleanDescription.isEmpty || cleanDescription == rawActivity) {
-        cleanDescription = rawActivity.substring(rawActivity.indexOf(']') + 1).trim();
-      }
-    } else {
-      kdName = rawActivity;
-    }
-
-    final kdList = [
-      'Membuat mockup aplikasi sesuai dengan rancangan',
-      'Mengimplementasi mockup ke dalam layout UI',
-      'Mengkonfigurasi script web / backend aplikasi',
-      'Manajemen basis data & relasi entitas',
-      'Pengujian & validasi modul aplikasi',
-      'Bug fixing & perbaikan performa sistem',
-      'Kegiatan operasional industri lainnya',
-    ];
-
-    for (int i = 0; i < kdList.length; i++) {
-      if (kdName.toLowerCase().contains(kdList[i].toLowerCase()) ||
-          kdList[i].toLowerCase().contains(kdName.toLowerCase()) ||
-          kdName.toLowerCase().contains('kd ${i + 1}') ||
-          kdName.toLowerCase().contains('kd${i + 1}')) {
-        kdNumber = i + 1;
-        break;
-      }
-    }
-
-    if (kdNumber == 0) {
-      if (kdName.toLowerCase().contains('mockup') || kdName.toLowerCase().contains('rancang')) {
-        kdNumber = 1;
-      } else if (kdName.toLowerCase().contains('layout') || kdName.toLowerCase().contains('slicing') || kdName.toLowerCase().contains('ui')) {
-        kdNumber = 2;
-      } else if (kdName.toLowerCase().contains('script') || kdName.toLowerCase().contains('backend') || kdName.toLowerCase().contains('api')) {
-        kdNumber = 3;
-      } else if (kdName.toLowerCase().contains('database') || kdName.toLowerCase().contains('basis data') || kdName.toLowerCase().contains('erd')) {
-        kdNumber = 4;
-      } else if (kdName.toLowerCase().contains('uji') || kdName.toLowerCase().contains('test') || kdName.toLowerCase().contains('validasi')) {
-        kdNumber = 5;
-      } else if (kdName.toLowerCase().contains('bug') || kdName.toLowerCase().contains('fix') || kdName.toLowerCase().contains('perbaikan')) {
-        kdNumber = 6;
-      } else {
-        kdNumber = 7;
-      }
-    }
-
-    if (cleanDescription.isEmpty) {
-      cleanDescription = rawActivity.replaceAll('[$kdName]', '').trim();
-      if (cleanDescription.isEmpty) cleanDescription = rawActivity;
-    }
-
+    final parsed = KdIndicators.extractFromActivity(rawActivity, rawDesc);
     return {
-      'kdNumber': kdNumber,
-      'kdName': kdName.isNotEmpty ? kdName : 'Kompetensi Dasar Terpenuhi',
-      'description': cleanDescription,
+      'kdNumber': parsed.kdNumber,
+      'kdName': parsed.kdName,
+      'description': parsed.description,
     };
   }
 
@@ -141,12 +86,22 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
     final id = _currentJournal['id'];
     if (id == null) return;
 
-    setState(() => _isApproving = true);
     final comment = _commentController.text.trim();
+    if (comment.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Catatan instruktur wajib diisi sebelum menyetujui logbook (ACC)!'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isApproving = true);
 
     final res = await SupervisorService.approveLogbook(
       id: id as int,
-      comment: comment.isNotEmpty ? comment : null,
+      comment: comment,
     );
 
     if (!mounted) return;
@@ -410,24 +365,6 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sub-Navigation Tabs: [Logbook] [Projek] [Penilaian] (Sesuai Mockup)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          _buildSubNavButton(0, Icons.assignment_turned_in_outlined, 'Logbook'),
-                          _buildSubNavButton(1, Icons.assignment_outlined, 'Projek'),
-                          _buildSubNavButton(2, Icons.event_note_outlined, 'Penilaian'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
                     // Main Verification Card
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -720,7 +657,7 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
                                       ),
                                     ),
                                     Text(
-                                      isPending ? 'wajib jika revisi' : 'riwayat',
+                                      isPending ? 'Wajib diisi' : 'riwayat',
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: isPending ? const Color(0xFFEF4444) : AppColors.textMuted,
@@ -745,7 +682,7 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
                                     decoration: const InputDecoration(
                                       isDense: true,
                                       border: InputBorder.none,
-                                      hintText: 'Beri catatan atau evaluasi untuk siswa...',
+                                      hintText: 'Beri catatan atau evaluasi untuk siswa (wajib diisi)...',
                                       hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
                                     ),
                                   ),
@@ -851,48 +788,6 @@ class _DudiLogbookDetailScreenState extends State<DudiLogbookDetailScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubNavButton(int index, IconData icon, String label) {
-    final bool isSelected = _selectedSubNav == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() => _selectedSubNav = index);
-          if (index != 0) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Modul $label untuk siswa terpilih')),
-            );
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFEFF6FF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? const Color(0xFF2563EB) : AppColors.textSecondary,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? const Color(0xFF2563EB) : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

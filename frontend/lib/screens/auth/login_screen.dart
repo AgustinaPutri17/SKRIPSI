@@ -188,7 +188,13 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         final detectedRole = result['detectedRole']?.toString();
         SnackBarAction? action;
-        if (detectedRole != null) {
+        if (result['isConnectionError'] == true) {
+          action = SnackBarAction(
+            label: 'Atur Server',
+            textColor: const Color(0xFFFDE047),
+            onPressed: _showServerConfigDialog,
+          );
+        } else if (detectedRole != null) {
           final targetIdx = _roles.indexWhere((r) => r['roleCode'] == detectedRole);
           if (targetIdx != -1) {
             final targetLabel = _roles[targetIdx]['label'];
@@ -241,6 +247,178 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _showServerConfigDialog() async {
+    final urlController = TextEditingController(text: AuthService.baseUrl);
+    bool isTesting = false;
+    String? testResult;
+    bool? testSuccess;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.cloud_sync_rounded, color: Color(0xFF2563EB), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Pengaturan Server API',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Masukkan alamat URL Cloudflare Tunnel atau server backend:',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: urlController,
+                      decoration: InputDecoration(
+                        labelText: 'URL Server Backend',
+                        hintText: 'https://xxxx.trycloudflare.com/api',
+                        prefixIcon: const Icon(Icons.link_rounded, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: isTesting
+                              ? null
+                              : () async {
+                                  setDialogState(() {
+                                    isTesting = true;
+                                    testResult = null;
+                                  });
+                                  final ok = await AuthService.testConnection(urlController.text.trim());
+                                  setDialogState(() {
+                                    isTesting = false;
+                                    testSuccess = ok;
+                                    testResult = ok
+                                        ? 'Terhubung! Server aktif & merespons.'
+                                        : 'Gagal terhubung ke URL ini.';
+                                  });
+                                },
+                          icon: isTesting
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.wifi_tethering_rounded, size: 16),
+                          label: Text(isTesting ? 'Menguji...' : 'Tes Koneksi'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            urlController.text = AuthService.defaultBaseUrl;
+                            setDialogState(() {
+                              testResult = null;
+                            });
+                          },
+                          child: const Text('Reset Default', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    if (testResult != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (testSuccess ?? false) ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: (testSuccess ?? false) ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              (testSuccess ?? false) ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              size: 18,
+                              color: (testSuccess ?? false) ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                testResult!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: (testSuccess ?? false) ? const Color(0xFF15803D) : const Color(0xFFB91C1C),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final target = urlController.text.trim();
+                    if (target.isNotEmpty) {
+                      await AuthService.setBaseUrl(target);
+                    }
+                    if (context.mounted) {
+                      Navigator.of(ctx).pop();
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Alamat server berhasil diperbarui!'),
+                          backgroundColor: Color(0xFF16A34A),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -263,6 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 12),
                   // App Icon / Logo
                   Container(
                     width: 72,

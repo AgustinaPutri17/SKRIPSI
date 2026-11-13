@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AttendanceController as AdminAttendanceController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\Admin\FieldSupervisorController as AdminFieldSupervisorController;
 use App\Http\Controllers\Api\Admin\LocationController as AdminLocationController;
+use App\Http\Controllers\Api\Admin\LogbookController as AdminLogbookController;
 use App\Http\Controllers\Api\Admin\PeriodController as AdminPeriodController;
 use App\Http\Controllers\Api\Admin\PlacementController as AdminPlacementController;
 use App\Http\Controllers\Api\Admin\StudentController as AdminStudentController;
@@ -17,6 +19,9 @@ use Illuminate\Support\Facades\Route;
 // ─────────────────────────────────────────────
 // Public routes (no auth required)
 // ─────────────────────────────────────────────
+Route::get('/ping', function () {
+    return response()->json(['status' => 'ok', 'message' => 'PKL Monitoring API is running']);
+});
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
 // ─────────────────────────────────────────────
@@ -56,6 +61,16 @@ Route::middleware('auth:sanctum')->group(function () {
         // Placements CRUD & Toggle Status
         Route::post('/placements/{id}/toggle-status', [AdminPlacementController::class, 'toggleStatus']);
         Route::apiResource('placements', AdminPlacementController::class);
+
+        // Rekap Kehadiran (Attendances)
+        Route::get('/attendances/export', [AdminAttendanceController::class, 'export']);
+        Route::get('/attendances', [AdminAttendanceController::class, 'index']);
+        Route::delete('/attendances/{id}', [AdminAttendanceController::class, 'destroy']);
+
+        // Rekap Logbook / Jurnal (Logbooks)
+        Route::get('/logbooks/export', [AdminLogbookController::class, 'export']);
+        Route::get('/logbooks', [AdminLogbookController::class, 'index']);
+        Route::delete('/logbooks/{id}', [AdminLogbookController::class, 'destroy']);
     });
 
     // ── Student routes ────────────────────────

@@ -63,8 +63,28 @@ class JournalResource extends JsonResource
             'verification_note' => $verificationNote,
             'verification_comment' => $verificationNote,
             'dudi_note' => (\App\Models\LogbookComment::where('logbook_id', $this->id)->whereHas('user', fn($q) => $q->where('role', 'field_supervisor'))->latest()->first()?->comment) ?? $verificationNote,
-            'teacher_note' => (\App\Models\LogbookComment::where('logbook_id', $this->id)->whereHas('user', fn($q) => $q->where('role', 'teacher'))->latest()->first()?->comment) ?? ($this->relationLoaded('verifier') && $this->verifier?->role === 'teacher' ? $verificationNote : null),
-            'teacher_name' => \App\Models\LogbookComment::where('logbook_id', $this->id)->whereHas('user', fn($q) => $q->where('role', 'teacher'))->latest()->first()?->user?->name ?? ($this->relationLoaded('verifier') && $this->verifier?->role === 'teacher' ? $this->verifier?->name : null),
+            'dudi_name' => (\App\Models\LogbookComment::where('logbook_id', $this->id)->whereHas('user', fn($q) => $q->where('role', 'field_supervisor'))->latest()->first()?->user?->name) ?? ($this->relationLoaded('verifier') ? $this->verifier?->name : null),
+            'teacher_note' => (\App\Models\LogbookComment::where('logbook_id', $this->id)->where(function($q) use ($request) {
+                if ($request->user()?->role === 'teacher') {
+                    $q->where('user_id', $request->user()->id)->orWhereHas('user', fn($u) => $u->where('role', 'teacher'));
+                } else {
+                    $q->whereHas('user', fn($u) => $u->where('role', 'teacher'));
+                }
+            })->latest()->first()?->comment) ?? ($this->relationLoaded('verifier') && $this->verifier?->role === 'teacher' ? $verificationNote : null),
+            'teacher_name' => (\App\Models\LogbookComment::where('logbook_id', $this->id)->where(function($q) use ($request) {
+                if ($request->user()?->role === 'teacher') {
+                    $q->where('user_id', $request->user()->id)->orWhereHas('user', fn($u) => $u->where('role', 'teacher'));
+                } else {
+                    $q->whereHas('user', fn($u) => $u->where('role', 'teacher'));
+                }
+            })->latest()->first()?->user?->name) ?? ($this->relationLoaded('verifier') && $this->verifier?->role === 'teacher' ? $this->verifier?->name : null),
+            'has_teacher_note' => !empty((\App\Models\LogbookComment::where('logbook_id', $this->id)->where(function($q) use ($request) {
+                if ($request->user()?->role === 'teacher') {
+                    $q->where('user_id', $request->user()->id)->orWhereHas('user', fn($u) => $u->where('role', 'teacher'));
+                } else {
+                    $q->whereHas('user', fn($u) => $u->where('role', 'teacher'));
+                }
+            })->latest()->first()?->comment) ?? ($this->relationLoaded('verifier') && $this->verifier?->role === 'teacher' ? $verificationNote : null)),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'placement' => $this->relationLoaded('placement') && $this->placement ? new PlacementResource($this->placement) : null,

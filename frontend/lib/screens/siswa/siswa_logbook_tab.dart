@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/kd_indicators.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/student_service.dart';
 import '../../widgets/smart_pkl_header.dart';
@@ -72,12 +73,8 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
   }
 
   int _matchKdFromActivity(String activity) {
-    for (int i = 1; i <= 7; i++) {
-      if (activity.contains('KD $i') || activity.contains('KD$i')) {
-        return i;
-      }
-    }
-    return 1;
+    final parsed = KdIndicators.extractFromActivity(activity, activity);
+    return parsed.kdNumber;
   }
 
   void _openRevisionDetail(Map<String, dynamic> journal) {
@@ -258,16 +255,7 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
       return;
     }
 
-    final kdTexts = [
-      'Membuat mockup aplikasi sesuai dengan rancangan',
-      'Mengimplementasi mockup ke dalam layout user interface',
-      'Mengkonfigurasi script web aplikasi',
-      'Membuat diagram ERD dan perancangan database',
-      'Menampilkan hasil pengujian aplikasi',
-      'Melakukan debugging kode program',
-      'Kegiatan industri lainnya',
-    ];
-    final selectedKdTitle = kdTexts[(_selectedKD - 1).clamp(0, kdTexts.length - 1)];
+    final selectedKdTitle = KdIndicators.titleFor(_selectedKD);
 
     final now = DateTime.now();
     final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -350,7 +338,7 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
   Widget build(BuildContext context) {
     final bool showBack = _selectedDetailJournal != null || _selectedRevisionJournal != null || _isCreatingJournal;
     final String pageTitle = _selectedDetailJournal != null
-        ? 'Detail Logbook & Bimbingan'
+        ? 'Detail Logbook'
         : (_selectedRevisionJournal != null
             ? 'Form Logbook'
             : (_isCreatingJournal
@@ -945,19 +933,10 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 14),
-                _buildKdOption(1, 'KD 1', '1. Membuat mockup aplikasi sesuai dengan rancangan'),
-                const SizedBox(height: 8),
-                _buildKdOption(2, 'KD 2', '2. Mengimplementasi mockup ke dalam layout UI'),
-                const SizedBox(height: 8),
-                _buildKdOption(3, 'KD 3', '3. Mengkonfigurasi script web / backend aplikasi'),
-                const SizedBox(height: 8),
-                _buildKdOption(4, 'KD 4', '4. Manajemen basis data & relasi entitas'),
-                const SizedBox(height: 8),
-                _buildKdOption(5, 'KD 5', '5. Pengujian & validasi modul aplikasi'),
-                const SizedBox(height: 8),
-                _buildKdOption(6, 'KD 6', '6. Bug fixing & perbaikan performa sistem'),
-                const SizedBox(height: 8),
-                _buildKdOption(7, 'KD 7', '7. Kegiatan operasional industri lainnya'),
+                for (int i = 0; i < KdIndicators.list.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  _buildKdOption(i + 1, 'KD ${i + 1}', '${i + 1}. ${KdIndicators.list[i]}'),
+                ],
               ],
             ),
           ),
@@ -1626,7 +1605,7 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Text('Foto Kegiatan', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                              const Text('Foto Kegiatan', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
                             ],
                           ),
                         ),
@@ -1649,7 +1628,7 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Text('Presensi Masuk', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF16A34A))),
+                              const Text('Presensi Masuk', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
                             ],
                           ),
                         ),
@@ -1672,7 +1651,7 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Text('Presensi Pulang', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
+                              const Text('Presensi Keluar', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
                             ],
                           ),
                         ),

@@ -143,8 +143,19 @@ class AttendanceService
             throw new \Exception('Anda sudah melakukan check-out hari ini.', 422);
         }
 
-        // Calculate distance
+        // Validasi jam pulang: siswa baru bisa absen pulang jika sudah memasuki check_out_time DU/DI
         $location = $placement->location;
+        $currentTime = now();
+        $targetCheckOutTimeStr = $location->check_out_time ? substr($location->check_out_time, 0, 5) : '16:00';
+        $targetCheckOutTime = \Carbon\Carbon::parse($today . ' ' . $targetCheckOutTimeStr);
+        if ($currentTime->lt($targetCheckOutTime)) {
+            throw new \Exception(
+                "Belum waktunya absen pulang. Presensi pulang baru dibuka mulai pukul {$targetCheckOutTimeStr} WIB.",
+                422
+            );
+        }
+
+        // Calculate distance
         $geoResult = $this->geoService->isWithinRadius(
             $latitude,
             $longitude,

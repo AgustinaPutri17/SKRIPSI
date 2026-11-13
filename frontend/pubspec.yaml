@@ -36,8 +36,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.6.0
   shared_preferences: ^2.5.6
+  shared_preferences_android: ">=2.3.0 <2.5.0"
   image_picker: ^1.2.4
   geolocator: ^14.1.2
+  pdf: ^3.13.1
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:

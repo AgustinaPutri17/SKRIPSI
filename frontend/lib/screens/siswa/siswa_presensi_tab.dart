@@ -147,6 +147,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
 
   // ── Clock & Server Time Sync ──────────────────────────────────────────────
   Timer? _clockTimer;
+  StreamSubscription<Position>? _positionStreamSub;
   String _currentTimeString = '';
   Duration _serverTimeOffset = Duration.zero;
 
@@ -157,6 +158,12 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
   int _checkInMinute = 0;
   int _checkOutHour = 16;
   int _checkOutMinute = 0;
+
+  bool get _isBeforeCheckOutTime {
+    final now = DateTime.now().add(_serverTimeOffset);
+    return now.hour < _checkOutHour ||
+        (now.hour == _checkOutHour && now.minute < _checkOutMinute);
+  }
 
   @override
   void initState() {
@@ -172,13 +179,66 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _positionStreamSub?.cancel();
     _alasanController.dispose();
     super.dispose();
   }
 
-  // ── Geolocator Native Permission & Real Location ───────────────────────────
-  Future<void> _requestAndGetRealLocation() async {
-    setState(() => _isLoadingGps = true);
+  void _applyPosition(Position position) {
+    if (!mounted) return;
+    _studentLat = position.latitude;
+    _studentLng = position.longitude;
+    _accuracy = position.accuracy > 0 ? position.accuracy : 4.0;
+    _isRealGpsActive = true;
+    _isLoadingGps = false;
+    _recalculateDistance();
+  }
+
+  void _startPositionStream() {
+    _positionStreamSub?.cancel();
+    final LocationSettings streamSettings = (!kIsWeb && Platform.isAndroid)
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 3,
+            intervalDuration: const Duration(seconds: 3),
+          )
+        : const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 3,
+          );
+
+    _positionStreamSub = Geolocator.getPositionStream(
+      locationSettings: streamSettings,
+    ).listen(
+      _applyPosition,
+      onError: (_) {},
+    );
+  }
+
+  void _showGpsNotice(String message, {Color backgroundColor = const Color(0xFFD97706)}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.gps_off_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message, style: const TextStyle(fontSize: 12))),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // ── Geolocator Native Permission & Real Location (Stream + Akurasi Bertahap) ─
+  Future<void> _requestAndGetRealLocation({bool isManualRefresh = false}) async {
+    setState(() {
+      _isLoadingGps = true;
+      _gpsStatusMessage = 'Mencari sinyal GPS...';
+    });
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -188,6 +248,9 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             _isLoadingGps = false;
             _gpsStatusMessage = 'Layanan Lokasi (GPS) belum diaktifkan';
           });
+          if (isManualRefresh) {
+            _showGpsNotice('GPS perangkat mati. Aktifkan layanan lokasi lalu coba lagi.');
+          }
         }
         return;
       }
@@ -201,6 +264,9 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
               _isLoadingGps = false;
               _gpsStatusMessage = 'Izin lokasi ditolak oleh pengguna';
             });
+            if (isManualRefresh) {
+              _showGpsNotice('Izin lokasi ditolak. Izinkan akses lokasi di perangkat Anda.');
+            }
           }
           return;
         }
@@ -212,35 +278,74 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             _isLoadingGps = false;
             _gpsStatusMessage = 'Izin lokasi ditolak permanen di pengaturan';
           });
+          if (isManualRefresh) {
+            _showGpsNotice('Izin lokasi ditolak permanen. Buka Pengaturan aplikasi untuk mengizinkan GPS.');
+          }
         }
         return;
       }
 
-      // Ambil posisi asli perangkat saat ini
-      final Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
+      // Aktifkan stream real-time agar jarak otomatis ter-update saat berpindah >= 3m
+      _startPositionStream();
 
-      if (mounted) {
-        setState(() {
-          _studentLat = position.latitude;
-          _studentLng = position.longitude;
-          _accuracy = position.accuracy > 0 ? position.accuracy : 4.0;
-          _isRealGpsActive = true;
-          _isLoadingGps = false;
-          _recalculateDistance();
-        });
+      bool gotPosition = false;
+
+      // Tahap 1: Coba kunci cepat dengan akurasi medium agar koordinat segera tampil
+      try {
+        final Position quickPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+        gotPosition = true;
+        _applyPosition(quickPosition);
+      } catch (_) {}
+
+      // Tahap 2: Perhalus dengan akurasi tinggi (high accuracy)
+      try {
+        final Position accuratePosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        gotPosition = true;
+        _applyPosition(accuratePosition);
+      } on TimeoutException {
+        if (mounted) {
+          setState(() {
+            _isLoadingGps = false;
+            if (!gotPosition) {
+              _gpsStatusMessage = 'GPS Timeout – Pindah ke area terbuka lalu refresh';
+            }
+          });
+          if (isManualRefresh && !gotPosition) {
+            _showGpsNotice('GPS timeout: sinyal lambat mengunci lokasi. Pindah ke area lebih terbuka lalu tekan Refresh.');
+          }
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _isLoadingGps = false;
+            if (!gotPosition) {
+              _gpsStatusMessage = 'Gagal membaca sensor GPS perangkat';
+            }
+          });
+          if (isManualRefresh && !gotPosition) {
+            _showGpsNotice('Gagal memperbarui lokasi GPS. Periksa sensor lokasi perangkat.');
+          }
+        }
       }
     } catch (_) {
-      // Fallback jika berjalan pada emulator tanpa sensor GPS atau web tanpa hardware
       if (mounted) {
         setState(() {
           _isLoadingGps = false;
-          _recalculateDistance();
+          _gpsStatusMessage = 'Gagal mengakses layanan lokasi perangkat';
         });
+        if (isManualRefresh) {
+          _showGpsNotice('Tidak dapat mengakses GPS perangkat.');
+        }
       }
     }
   }
@@ -480,6 +585,32 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
   //   - photo: File image selfie (maks 5MB)
   // ============================================================================
   Future<void> _handlePresensiSubmit(String jenis) async {
+    final bool isMasuk = jenis == 'Masuk';
+
+    // Validasi jam pulang: siswa belum bisa absen pulang sebelum jam pulang DU/DI
+    if (!isMasuk && _isBeforeCheckOutTime) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.schedule_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Belum waktunya absen pulang. Presensi pulang baru dibuka mulai pukul $_checkOutTimeString WIB.',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFD97706),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     // Validasi radius sebelum kirim ke backend
     if (!_isWithinRadius) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -504,7 +635,6 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
       return;
     }
 
-    final bool isMasuk = jenis == 'Masuk';
     final XFile? currentSelfie = isMasuk ? _selfieCheckInImage : _selfieCheckOutImage;
 
     // Validasi foto selfie
@@ -540,6 +670,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
         longitude: _studentLng,
         accuracy: _accuracy,
         photoPath: currentSelfie.path,
+        photoFile: currentSelfie,
       );
     } else {
       res = await StudentService.checkOut(
@@ -547,6 +678,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
         longitude: _studentLng,
         accuracy: _accuracy,
         photoPath: currentSelfie.path,
+        photoFile: currentSelfie,
       );
     }
 
@@ -618,6 +750,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
       endDate: _endDate.toIso8601String().substring(0, 10),
       reason: alasan,
       attachmentPath: _suratDokterFile?.path,
+      attachmentFile: _suratDokterFile,
     );
 
     if (!mounted) return;
@@ -666,7 +799,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
     if (_activeSubTab == 1) {
       headerTitle = 'Presensi Keluar PKL';
     } else if (_activeSubTab == 2) {
-      headerTitle = 'Pengajuan izin';
+      headerTitle = 'Izin / Sakit';
     }
 
     return Scaffold(
@@ -917,6 +1050,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
     final bool hasCheckedIn = _attendanceToday?['check_in_at'] != null;
     final bool hasCheckedOut = _attendanceToday?['check_out_at'] != null;
     final bool isCompleted = isMasuk ? hasCheckedIn : hasCheckedOut;
+    final bool isBeforePulang = !isMasuk && _isBeforeCheckOutTime;
 
     final String? serverPhotoUrl = isMasuk
         ? (_attendanceToday != null ? _attendanceToday!['check_in_photo_url']?.toString() : null)
@@ -1128,7 +1262,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
                 top: 14,
                 left: 14,
                 child: InkWell(
-                  onTap: _isLoadingGps ? null : _requestAndGetRealLocation,
+                  onTap: _isLoadingGps ? null : () => _requestAndGetRealLocation(isManualRefresh: true),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1486,6 +1620,33 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
                     ],
                   ),
                 ),
+              ] else if (isBeforePulang) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFDE68A), width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, color: Color(0xFFD97706), size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Absen pulang belum dibuka. Anda baru dapat mengambil foto & mengirim presensi pulang mulai pukul $_checkOutTimeString WIB.',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF92400E),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ] else ...[
                 InkWell(
                   onTap: () => _pickSelfiePhoto(isMasuk: isMasuk),
@@ -1545,6 +1706,21 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             color: const Color(0xFF94A3B8),
             onPressed: () {},
           )
+        else if (isBeforePulang)
+          CustomButton(
+            text: 'Belum Waktunya Pulang (Mulai $_checkOutTimeString WIB)',
+            icon: Icons.schedule_rounded,
+            color: const Color(0xFF94A3B8),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Belum waktunya absen pulang. Presensi pulang baru dibuka mulai pukul $_checkOutTimeString WIB.'),
+                  backgroundColor: const Color(0xFFD97706),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          )
         else
           CustomButton(
             text: _isSubmitting
@@ -1556,48 +1732,6 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             isLoading: _isSubmitting,
             onPressed: _isSubmitting ? () {} : () => _handlePresensiSubmit(tipe),
           ),
-        const SizedBox(height: 10),
-
-        // 6. Footer Note Status Kehadiran
-        Builder(
-          builder: (context) {
-            final now = DateTime.now().add(_serverTimeOffset);
-            final bool isLate = (now.hour > _checkInHour || (now.hour == _checkInHour && now.minute > _checkInMinute));
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    tipe == 'Masuk'
-                        ? (isLate ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded)
-                        : Icons.check_circle_outline_rounded,
-                    size: 14,
-                    color: tipe == 'Masuk' && isLate ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      tipe == 'Masuk'
-                          ? (isLate
-                              ? 'Melewati jam masuk DUDI ($_checkInTimeString WIB) • Akan tercatat Terlambat'
-                              : 'Memenuhi syarat kehadiran masuk kantor (<= $_checkInTimeString WIB)')
-                          : 'Waktu kehadiran keluar kantor (Mulai $_checkOutTimeString WIB)',
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: tipe == 'Masuk' && isLate ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
         const SizedBox(height: 20),
       ],
     );

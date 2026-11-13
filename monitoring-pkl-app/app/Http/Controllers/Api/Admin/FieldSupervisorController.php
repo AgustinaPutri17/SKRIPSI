@@ -19,7 +19,7 @@ class FieldSupervisorController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = FieldSupervisor::with('user');
+        $query = FieldSupervisor::with(['user', 'locations']);
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -29,7 +29,7 @@ class FieldSupervisorController extends Controller
             });
         }
 
-        $supervisors = $query->latest()->paginate($request->get('per_page', 15));
+        $supervisors = $query->latest()->paginate($request->get('per_page', 50));
 
         return $this->success([
             'field_supervisors' => FieldSupervisorResource::collection($supervisors),
@@ -83,15 +83,22 @@ class FieldSupervisorController extends Controller
     }
 
     /**
-     * Deactivate field supervisor account without deleting historical records.
+     * Delete field supervisor account and detach from locations.
      */
     public function destroy(int $id): JsonResponse
     {
         $supervisor = FieldSupervisor::findOrFail($id);
 
-        $supervisor->user->update(['is_active' => false]);
-        $supervisor->user->tokens()->delete();
+        DB::transaction(function () use ($supervisor) {
+            $supervisor->locations()->detach();
+            $supervisor->placements()->update(['field_supervisor_id' => null]);
+            if ($supervisor->user) {
+                $supervisor->user->tokens()->delete();
+                $supervisor->user->delete();
+            }
+            $supervisor->delete();
+        });
 
-        return $this->success(null, 'Akun pembimbing lapangan berhasil dinonaktifkan.');
+        return $this->success(null, 'Akun pembimbing DU/DI berhasil dihapus.');
     }
 }

@@ -277,11 +277,15 @@ class TeacherController extends Controller
         $placementIds = $this->getTeacherPlacementIds($request);
         $journal = Journal::whereIn('placement_id', $placementIds)->findOrFail($id);
 
-        \App\Models\LogbookComment::create([
-            'logbook_id' => $journal->id,
-            'user_id' => $request->user()->id,
-            'comment' => $request->comment,
-        ]);
+        \App\Models\LogbookComment::updateOrCreate(
+            [
+                'logbook_id' => $journal->id,
+                'user_id' => $request->user()->id,
+            ],
+            [
+                'comment' => $request->comment,
+            ]
+        );
 
         return $this->success(
             new JournalResource($journal->fresh(['comments.user', 'placement.student', 'placement.location', 'verifier'])),
