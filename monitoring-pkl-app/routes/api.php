@@ -138,6 +138,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [SupervisorController::class, 'dashboard']);
         Route::get('/students', [SupervisorController::class, 'students']);
         Route::get('/students/{id}', [SupervisorController::class, 'showStudent']);
+        Route::get('/students/{id}/assessment', [SupervisorController::class, 'getStudentAssessment']);
+        Route::post('/students/{id}/assessment', [SupervisorController::class, 'saveStudentAssessment']);
 
         // Field Supervisor Location Management
         Route::get('/locations', [SupervisorController::class, 'locations']);

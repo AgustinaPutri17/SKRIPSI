@@ -10,6 +10,7 @@ use App\Http\Resources\AttendanceResource;
 use App\Http\Resources\JournalResource;
 use App\Http\Resources\LocationResource;
 use App\Http\Resources\StudentResource;
+use App\Models\Assessment;
 use App\Models\Attendance;
 use App\Models\Journal;
 use App\Models\Location;
@@ -37,7 +38,7 @@ class SupervisorController extends Controller
     public function students(Request $request): JsonResponse
     {
         $supervisor = $request->user()->fieldSupervisor;
-        $placements = Placement::with(['student.user', 'location', 'period'])
+        $placements = Placement::with(['student.user', 'location', 'period', 'assessment'])
             ->where('field_supervisor_id', $supervisor->id)
             ->where('status', 'active')
             ->get();
@@ -54,6 +55,18 @@ class SupervisorController extends Controller
             $data['logbooks_count'] = $logbooksCount;
             $data['projects_count'] = $projectsCount;
             $data['status'] = $p->status;
+
+            $assessment = $p->assessment;
+            $data['assessment'] = $assessment ? [
+                'id' => $assessment->id,
+                'dudi_score' => $assessment->dudi_score !== null ? (float)$assessment->dudi_score : null,
+                'dudi_components' => $assessment->dudi_components,
+                'dudi_notes' => $assessment->dudi_notes,
+                'dudi_scored_at' => $assessment->dudi_scored_at?->toIso8601String(),
+                'status' => $assessment->status,
+            ] : null;
+            $data['dudi_score'] = $assessment && $assessment->dudi_score !== null ? (float)$assessment->dudi_score : null;
+
             return $data;
         })->unique('id')->values();
 
@@ -71,6 +84,87 @@ class SupervisorController extends Controller
             ->firstOrFail();
 
         return $this->success(new StudentResource($placement->student));
+    }
+
+    /**
+     * Get assessment detail for a student.
+     */
+    public function getStudentAssessment(Request $request, int $id): JsonResponse
+    {
+        $supervisor = $request->user()->fieldSupervisor;
+        $placement = Placement::with(['student.user', 'location', 'period', 'assessment'])
+            ->where('field_supervisor_id', $supervisor->id)
+            ->where('student_id', $id)
+            ->firstOrFail();
+
+        $assessment = $placement->assessment;
+
+        return $this->success([
+            'placement_id' => $placement->id,
+            'student' => [
+                'id' => $placement->student->id,
+                'name' => $placement->student->name,
+                'nis' => $placement->student->nis,
+                'class' => $placement->student->class,
+                'major' => $placement->student->major,
+            ],
+            'location' => $placement->location ? [
+                'id' => $placement->location->id,
+                'name' => $placement->location->name,
+                'address' => $placement->location->address,
+            ] : null,
+            'assessment' => $assessment ? [
+                'id' => $assessment->id,
+                'dudi_score' => $assessment->dudi_score !== null ? (float)$assessment->dudi_score : null,
+                'dudi_components' => $assessment->dudi_components,
+                'dudi_notes' => $assessment->dudi_notes,
+                'dudi_scored_at' => $assessment->dudi_scored_at?->toIso8601String(),
+                'status' => $assessment->status,
+            ] : null,
+        ]);
+    }
+
+    /**
+     * Save/update assessment from DUDI for a student.
+     */
+    public function saveStudentAssessment(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'dudi_score' => 'required|numeric|min:0|max:100',
+            'dudi_components' => 'required|array',
+            'dudi_notes' => 'nullable|string|max:2000',
+        ]);
+
+        $supervisor = $request->user()->fieldSupervisor;
+        $placement = Placement::where('field_supervisor_id', $supervisor->id)
+            ->where('student_id', $id)
+            ->firstOrFail();
+
+        $assessment = Assessment::firstOrNew(['placement_id' => $placement->id]);
+        $assessment->dudi_score = round($request->input('dudi_score'), 2);
+        $assessment->dudi_components = $request->input('dudi_components');
+        $assessment->dudi_notes = $request->input('dudi_notes');
+        $assessment->dudi_scored_by = $request->user()->id;
+        $assessment->dudi_scored_at = now();
+
+        if ($assessment->teacher_score !== null) {
+            $wDudi = $assessment->weight_dudi ?? 0.50;
+            $wTeacher = $assessment->weight_teacher ?? 0.50;
+            $assessment->final_score = round(($assessment->dudi_score * $wDudi) + ($assessment->teacher_score * $wTeacher), 2);
+        }
+
+        $assessment->save();
+
+        return $this->success([
+            'message' => 'Penilaian PKL berhasil disimpan.',
+            'assessment' => [
+                'id' => $assessment->id,
+                'dudi_score' => (float)$assessment->dudi_score,
+                'dudi_components' => $assessment->dudi_components,
+                'dudi_notes' => $assessment->dudi_notes,
+                'dudi_scored_at' => $assessment->dudi_scored_at->toIso8601String(),
+            ],
+        ]);
     }
 
     /**
