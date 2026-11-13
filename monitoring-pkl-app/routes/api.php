@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Student\StudentController;
 use App\Http\Controllers\Api\Supervisor\SupervisorController;
 use App\Http\Controllers\Api\Teacher\TeacherController;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 // ─────────────────────────────────────────────
@@ -21,6 +22,15 @@ use Illuminate\Support\Facades\Route;
 // ─────────────────────────────────────────────
 Route::get('/ping', function () {
     return response()->json(['status' => 'ok', 'message' => 'PKL Monitoring API is running']);
+});
+Route::get('/seed-db', function () {
+    Artisan::call('migrate', ['--force' => true]);
+    Artisan::call('db:seed', ['--force' => true]);
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Database successfully migrated and seeded!',
+        'output' => Artisan::output(),
+    ]);
 });
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
