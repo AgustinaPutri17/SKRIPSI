@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["php82", "php82Packages.composer"]
+
+[phases.install]
+cmds = ["cd monitoring-pkl-app && composer install --no-dev --optimize-autoloader --no-interaction"]
+
+[phases.build]
+cmds = ["cd monitoring-pkl-app && php artisan config:clear"]
+
+[start]
+cmd = "cd monitoring-pkl-app && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
