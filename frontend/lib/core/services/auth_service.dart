@@ -9,9 +9,11 @@ class AuthService {
   static const String _keyUser = 'auth_user';
   static const String _keyCustomBaseUrl = 'custom_base_url';
 
-  /// URL Cloudflare Tunnel aktif (Online publik)
-  /// Diperbarui otomatis oleh jalankan_online.bat atau dapat diatur via tombol Pengaturan Server di aplikasi.
-  static const String cloudflareTunnelUrl = 'https://arizona-deutsch-graduated-define.trycloudflare.com/api';
+  /// URL Backend Railway Production 24 Jam Online (Tanpa perlu laptop menyala)
+  static const String railwayProductionUrl = 'https://skripsi-production-ce547be8.up.railway.app/api';
+
+  /// URL Cloudflare Tunnel cadangan
+  static const String cloudflareTunnelUrl = 'https://slow-halifax-ddr-parties.trycloudflare.com/api';
 
   static String? _cachedBaseUrl;
 
@@ -35,6 +37,7 @@ class AuthService {
         }
       } catch (_) {}
       const webOptions = [
+        'https://skripsi-production-ce547be8.up.railway.app/api',
         'https://slow-halifax-ddr-parties.trycloudflare.com/api',
         'http://localhost:8000/api',
         'http://127.0.0.1:8000/api',
@@ -47,10 +50,12 @@ class AuthService {
 
     if (Platform.isAndroid) {
       // Prioritas Android:
-      // 1. 127.0.0.1 (USB adb reverse via kabel Tipe-C - respon tercepat)
-      // 2. Cloudflare Tunnel URL aktif (fallback otomatis jika kabel dicabut)
-      // 3. IP Wi-Fi lokal
+      // 1. Railway Cloud 24 Jam Permanen (tanpa perlu laptop)
+      // 2. 127.0.0.1 (USB adb reverse via kabel Tipe-C)
+      // 3. Cloudflare Tunnel URL aktif
+      // 4. IP Wi-Fi lokal
       const androidOptions = [
+        'https://skripsi-production-ce547be8.up.railway.app/api',
         'http://127.0.0.1:8000/api',
         'https://slow-halifax-ddr-parties.trycloudflare.com/api',
         'http://192.168.100.13:8000/api',
@@ -92,10 +97,7 @@ class AuthService {
         }
       } catch (_) {}
     }
-    if (cloudflareTunnelUrl.trim().isNotEmpty) {
-      return cloudflareTunnelUrl.trim();
-    }
-    return 'http://127.0.0.1:8000/api';
+    return railwayProductionUrl;
   }
 
   /// Resolves the active base URL dynamically.

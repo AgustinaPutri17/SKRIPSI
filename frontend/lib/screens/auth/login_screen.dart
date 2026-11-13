@@ -293,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: urlController,
                       decoration: InputDecoration(
                         labelText: 'URL Server Backend',
-                        hintText: 'https://xxxx.trycloudflare.com/api',
+                        hintText: 'https://skripsi-production-ce547be8.up.railway.app/api',
                         prefixIcon: const Icon(Icons.link_rounded, size: 20),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
