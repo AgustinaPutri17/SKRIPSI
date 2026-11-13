@@ -1,2 +1,6 @@
-*
+# Keep uploaded images in repo so cloud server has them
 !.gitignore
+!*/
+!*.jpg
+!*.jpeg
+!*.png
