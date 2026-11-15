@@ -386,35 +386,13 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  const Expanded(
-                                    child: Text(
-                                      'Berkas Dokumen Projek',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                                    ),
-                                    child: const Text(
-                                      'Tap untuk baca',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF2563EB),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              const Text(
+                                'Berkas Dokumen Projek',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                               const SizedBox(height: 10),
                               Material(
@@ -489,7 +467,7 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 height: 40,
-                                child: ElevatedButton.icon(
+                                child: ElevatedButton(
                                   onPressed: () {
                                     final pId = _project?['id'] is int
                                         ? _project!['id'] as int
@@ -505,11 +483,6 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                                       ),
                                     );
                                   },
-                                  icon: const Icon(Icons.menu_book_rounded, size: 18),
-                                  label: const Text(
-                                    'Buka & Baca Dokumen PDF',
-                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2563EB),
                                     foregroundColor: Colors.white,
@@ -517,6 +490,10 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
+                                  ),
+                                  child: const Text(
+                                    'Buka dan Baca Dokumen',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                                   ),
                                 ),
                               ),
