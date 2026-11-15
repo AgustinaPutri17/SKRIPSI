@@ -610,10 +610,10 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.rate_review_rounded, size: 16, color: Color(0xFF2563EB)),
+                                Icon(Icons.history_rounded, size: 16, color: Color(0xFF2563EB)),
                                 SizedBox(width: 6),
                                 Text(
-                                  'Catatan Instruktur',
+                                  'Catatan Evaluasi Sebelumnya',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
@@ -623,7 +623,7 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            if (_reviews.isEmpty)
+                            if (_reviews.where((r) => r['reviewer_role'] == 'teacher').isEmpty)
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(12),
@@ -632,81 +632,39 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Text(
-                                  'Belum ada catatan instruktur untuk projek ini.',
+                                  'Belum ada catatan evaluasi untuk projek ini.',
                                   style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                                 ),
                               )
                             else
-                              ..._reviews.map((r) {
-                                final isTeacher = r['reviewer_role'] == 'teacher';
-                                final isAcc = r['decision'] == 'approved';
-                                final revName = r['reviewer_name']?.toString() ??
-                                    (isTeacher ? 'Guru Pembimbing' : 'Pembimbing DU/DI');
-                                final roleLabel = isTeacher
-                                    ? 'Guru Pembimbing'
-                                    : 'DU/DI';
-
-                                final Color cardBg = isTeacher
-                                    ? const Color(0xFFEFF6FF)
-                                    : (isAcc ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2));
-                                final Color cardBorder = isTeacher
-                                    ? const Color(0xFFBFDBFE)
-                                    : (isAcc ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA));
-                                final Color titleColor = isTeacher
-                                    ? const Color(0xFF1E40AF)
-                                    : (isAcc ? const Color(0xFF166534) : const Color(0xFF991B1B));
-                                final IconData headerIcon = isTeacher
-                                    ? Icons.school_rounded
-                                    : (isAcc ? Icons.verified_rounded : Icons.feedback_rounded);
-
-                                String statusLabel;
-                                if (isTeacher) {
-                                  statusLabel = 'Catatan Bimbingan';
-                                } else {
-                                  statusLabel = isAcc ? 'Status: Disetujui (ACC)' : 'Status: Perlu Revisi';
-                                }
+                              ..._reviews.where((r) => r['reviewer_role'] == 'teacher').map((r) {
+                                final revName = r['reviewer_name']?.toString() ?? 'Guru Pembimbing';
 
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: cardBg,
+                                    color: const Color(0xFFEFF6FF),
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: cardBorder),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(headerIcon, size: 15, color: titleColor),
+                                          const Icon(Icons.school_rounded, size: 15, color: Color(0xFF1D4ED8)),
                                           const SizedBox(width: 6),
                                           Expanded(
                                             child: Text(
-                                              '$statusLabel • $revName',
-                                              style: TextStyle(
+                                              'Catatan Guru ($revName)',
+                                              style: const TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
-                                                color: titleColor,
+                                                color: Color(0xFF1D4ED8),
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.85),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              roleLabel,
-                                              style: TextStyle(
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.w600,
-                                                color: titleColor,
-                                              ),
                                             ),
                                           ),
                                         ],
@@ -715,7 +673,7 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                                         const SizedBox(height: 6),
                                         Text(
                                           'Catatan: "${r['note']}"',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.4),
+                                          style: const TextStyle(fontSize: 12, color: Color(0xFF1E3A8A), height: 1.4),
                                         ),
                                       ],
                                     ],

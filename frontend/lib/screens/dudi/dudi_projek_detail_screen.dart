@@ -488,8 +488,8 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      // Riwayat Review Sebelumnya jika ada
-                      if (_reviews.isNotEmpty) ...[
+                      // Riwayat Review Sebelumnya jika ada (hanya catatan DU/DI, tanpa umpan balik silang dengan guru)
+                      if (_reviews.where((r) => r['reviewer_role'] != 'teacher').isNotEmpty) ...[
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
@@ -516,37 +516,28 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              ..._reviews.map((r) {
-                                final isTeacher = r['reviewer_role'] == 'teacher';
+                              ..._reviews.where((r) => r['reviewer_role'] != 'teacher').map((r) {
                                 final isAcc = r['decision'] == 'approved';
-                                final revName = r['reviewer_name']?.toString() ?? (isTeacher ? 'Guru Pembimbing' : 'Instruktur DU/DI');
-                                final Color cardBg = isTeacher
-                                    ? const Color(0xFFEFF6FF)
-                                    : (isAcc ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2));
-                                final Color textColor = isTeacher
-                                    ? const Color(0xFF1E40AF)
-                                    : (isAcc ? const Color(0xFF166534) : const Color(0xFF991B1B));
-                                final String prefix = isTeacher
-                                    ? "Catatan Guru ($revName)"
-                                    : (isAcc ? "Disetujui DU/DI ($revName)" : "Perlu Revisi DU/DI ($revName)");
+                                final revName = r['reviewer_name']?.toString() ?? 'Instruktur DU/DI';
+                                final String prefix = isAcc ? "Disetujui DU/DI ($revName)" : "Perlu Revisi DU/DI ($revName)";
 
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 6),
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: cardBg,
+                                    color: const Color(0xFFEFF6FF),
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: isTeacher ? const Color(0xFFBFDBFE) : (isAcc ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA))),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '$prefix: ${r['note'] ?? "-"}',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: textColor,
+                                          color: Color(0xFF1D4ED8),
                                         ),
                                       ),
                                     ],
