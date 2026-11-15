@@ -104,7 +104,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
             // Header SMART PKL Beranda Guru
             SmartPklHeader(
               title: 'Beranda',
-              onProfileTap: () => widget.onNavigateTab?.call(3),
+              onProfileTap: () => widget.onNavigateTab?.call(4),
             ),
 
             if (_isLoading)
@@ -149,13 +149,13 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      // 3 Quick Navigation Action Cards (Izin & Sakit, Logbook, Profil)
+                      // 4 Quick Navigation Action Cards (Izin & Sakit, Logbook, Projek, Profil)
                       Row(
                         children: [
                           Expanded(
                             child: _buildHeaderActionTile(
                               icon: Icons.medical_services_outlined,
-                              label: 'Izin & Sakit',
+                              label: 'Izin',
                               onTap: () => widget.onNavigateTab?.call(1), // Tab Izin & Sakit
                             ),
                           ),
@@ -170,9 +170,17 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _buildHeaderActionTile(
+                              icon: Icons.assignment_outlined,
+                              label: 'Projek',
+                              onTap: () => widget.onNavigateTab?.call(3), // Tab Projek
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildHeaderActionTile(
                               icon: Icons.person_outline_rounded,
                               label: 'Profil',
-                              onTap: () => widget.onNavigateTab?.call(3), // Tab Profil
+                              onTap: () => widget.onNavigateTab?.call(4), // Tab Profil
                             ),
                           ),
                         ],

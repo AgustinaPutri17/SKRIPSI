@@ -11,6 +11,8 @@ use App\Models\Attendance;
 use App\Models\Journal;
 use App\Models\LeaveRequest;
 use App\Models\Placement;
+use App\Models\ProjectReview;
+use App\Models\ProjectSubmission;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -407,6 +409,139 @@ class TeacherController extends Controller
             new LeaveRequestResource($leaveRequest->fresh(['placement.student.user', 'placement.location', 'reviewer'])),
             $request->status === 'approved' ? 'Pengajuan izin/sakit berhasil disetujui.' : 'Pengajuan izin/sakit berhasil ditolak.'
         );
+    }
+
+    /**
+     * Get list of project submissions of students supervised by this teacher.
+     */
+    public function getProjects(Request $request): JsonResponse
+    {
+        $placementIds = $this->getTeacherPlacementIds($request);
+
+        $submissions = ProjectSubmission::with(['placement.student.user', 'placement.location', 'reviews.reviewer'])
+            ->whereIn('placement_id', $placementIds)
+            ->latest('updated_at')
+            ->get();
+
+        $data = $submissions->map(function ($sub) {
+            $student = $sub->placement?->student;
+            return [
+                'id' => $sub->id,
+                'placement_id' => $sub->placement_id,
+                'student' => $student ? [
+                    'id' => $student->id,
+                    'name' => $student->user->name ?? $student->name,
+                    'nis' => $student->nis,
+                    'class' => $student->class,
+                    'major' => $student->major,
+                    'location' => $sub->placement?->location?->name,
+                ] : null,
+                'title' => $sub->title,
+                'description' => $sub->description,
+                'plan' => $sub->plan,
+                'result' => $sub->result,
+                'document_name' => $sub->document_name,
+                'document_size' => $sub->document_size,
+                'document_url' => $sub->document_path ? asset('storage/' . $sub->document_path) : null,
+                'status' => $sub->status,
+                'submitted_at' => $sub->submitted_at?->toIso8601String(),
+                'updated_at' => $sub->updated_at?->toIso8601String(),
+                'reviews' => $sub->reviews->map(function ($r) {
+                    $role = $r->reviewer?->role;
+                    return [
+                        'id' => $r->id,
+                        'decision' => $r->decision,
+                        'note' => $r->note,
+                        'reviewer_name' => $r->reviewer?->name,
+                        'reviewer_role' => $role,
+                        'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
+                        'created_at' => $r->created_at?->toIso8601String(),
+                    ];
+                }),
+            ];
+        });
+
+        return $this->success($data);
+    }
+
+    /**
+     * Detail of a student's project submission for teacher.
+     */
+    public function showProject(Request $request, int $id): JsonResponse
+    {
+        $placementIds = $this->getTeacherPlacementIds($request);
+
+        $sub = ProjectSubmission::with(['placement.student.user', 'placement.location', 'reviews.reviewer'])
+            ->whereIn('placement_id', $placementIds)
+            ->findOrFail($id);
+
+        $student = $sub->placement?->student;
+
+        return $this->success([
+            'id' => $sub->id,
+            'placement_id' => $sub->placement_id,
+            'student' => $student ? [
+                'id' => $student->id,
+                'name' => $student->user->name ?? $student->name,
+                'nis' => $student->nis,
+                'class' => $student->class,
+                'major' => $student->major,
+                'location' => $sub->placement?->location?->name,
+            ] : null,
+            'title' => $sub->title,
+            'description' => $sub->description,
+            'plan' => $sub->plan,
+            'result' => $sub->result,
+            'document_name' => $sub->document_name,
+            'document_size' => $sub->document_size,
+            'document_url' => $sub->document_path ? asset('storage/' . $sub->document_path) : null,
+            'status' => $sub->status,
+            'submitted_at' => $sub->submitted_at?->toIso8601String(),
+            'updated_at' => $sub->updated_at?->toIso8601String(),
+            'reviews' => $sub->reviews->map(function ($r) {
+                $role = $r->reviewer?->role;
+                return [
+                    'id' => $r->id,
+                    'decision' => $r->decision,
+                    'note' => $r->note,
+                    'reviewer_name' => $r->reviewer?->name,
+                    'reviewer_role' => $role,
+                    'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
+                    'created_at' => $r->created_at?->toIso8601String(),
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Berikan catatan bimbingan atau masukan guru pembimbing pada projek siswa.
+     */
+    public function reviewProject(Request $request, int $id): JsonResponse
+    {
+        $placementIds = $this->getTeacherPlacementIds($request);
+
+        $sub = ProjectSubmission::whereIn('placement_id', $placementIds)->findOrFail($id);
+
+        $request->validate([
+            'note' => 'required|string|max:2000',
+            'decision' => 'nullable|string|in:noted,approved,revision',
+        ]);
+
+        $decision = $request->input('decision', 'noted');
+
+        $review = ProjectReview::create([
+            'project_submission_id' => $sub->id,
+            'reviewer_id' => $request->user()->id,
+            'decision' => $decision,
+            'note' => $request->input('note'),
+            'created_at' => now(),
+        ]);
+
+        return $this->success([
+            'submission' => $sub->fresh(['reviews.reviewer']),
+            'review' => $review,
+            'message' => 'Catatan bimbingan projek berhasil dikirim ke siswa.',
+        ]);
     }
 }
 

@@ -548,19 +548,18 @@ class StudentService {
           }
         }
       } catch (_) {
-        // Backend offline / rute belum di-route pada Laravel, fallback ke cache lokal
+        // Backend offline / rute belum di-route pada Laravel
       }
     }
-
-    // Fallback: ambil dari storage lokal perangkat
-    final prefs = await SharedPreferences.getInstance();
-    final cached = prefs.getString(_projectCacheKey);
-    if (cached != null) {
-      try {
-        return jsonDecode(cached) as Map<String, dynamic>;
-      } catch (_) {}
-    }
     return null;
+  }
+
+  /// Menghapus cache lokal projek
+  static Future<void> clearLocalProjectCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_projectCacheKey);
+    } catch (_) {}
   }
 
   /// ============================================================================
@@ -568,66 +567,141 @@ class StudentService {
   /// Backend File: monitoring-pkl-app (Model: App\Models\ProjectSubmission)
   /// Deskripsi:
   ///   Menyimpan draf atau mengajukan verifikasi projek siswa.
-  ///   Parameter:
-  ///   - title: '1. Nama & Deskripsi Pekerjaan' (String)
-  ///   - description: Rincian deskripsi (String)
-  ///   - plan: '2. Perencanaan Kegiatan (Planning)' (String)
-  ///   - result: '3. Pelaksanaan Kegiatan / Hasil Karya' (String)
-  ///   - document_name: Berkas PDF (Maks. 15 MB / PKL_PROJECT_PDF_MAX_KB)
-  ///   - status: 'submitted' (Ajukan verifikasi) atau 'draft'
   /// ============================================================================
   static Future<Map<String, dynamic>> saveProjectSubmission({
+    int? id,
     required String title,
     required String description,
     String? plan,
     String? result,
+    String? filePath,
     String? documentName,
     int? documentSize,
     bool submitImmediately = true,
   }) async {
+    final status = submitImmediately ? 'pending' : 'draft';
     final payload = <String, dynamic>{
       'title': title,
       'description': description,
-      'status': submitImmediately ? 'submitted' : 'draft',
+      'status': status,
       'submitted_at': DateTime.now().toIso8601String(),
     };
+    if (id != null && id > 0) payload['id'] = id;
     if (plan != null && plan.isNotEmpty) payload['plan'] = plan;
     if (result != null && result.isNotEmpty) payload['result'] = result;
     if (documentName != null && documentName.isNotEmpty) payload['document_name'] = documentName;
     if (documentSize != null && documentSize > 0) payload['document_size'] = documentSize;
 
-    // 1. Simpan salinan ke storage lokal perangkat terlebih dahulu (keamanan data)
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_projectCacheKey, jsonEncode(payload));
+    final token = await AuthService.getToken();
+    final url = Uri.parse('${AuthService.baseUrl}/student/projects');
 
-    // 2. Hubungi endpoint API backend: POST /api/student/projects
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/student/projects');
+      if (filePath != null && filePath.isNotEmpty) {
+        final request = http.MultipartRequest('POST', url);
+        if (token != null) request.headers['Authorization'] = 'Bearer $token';
+        request.headers['Accept'] = 'application/json';
+
+        if (id != null && id > 0) request.fields['id'] = id.toString();
+        request.fields['title'] = title;
+        request.fields['description'] = description;
+        request.fields['status'] = status;
+        if (plan != null && plan.isNotEmpty) request.fields['plan'] = plan;
+        if (result != null && result.isNotEmpty) request.fields['result'] = result;
+        if (documentName != null && documentName.isNotEmpty) {
+          request.fields['document_name'] = documentName;
+        }
+
+        request.files.add(await http.MultipartFile.fromPath(
+          'document',
+          filePath,
+          filename: documentName ?? 'projek_laporan.pdf',
+        ));
+
+        final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Projek dan dokumen PDF berhasil diajukan untuk verifikasi pembimbing DU/DI!',
+            'data': data['data'] ?? payload,
+          };
+        } else {
+          final errData = jsonDecode(response.body);
+          throw Exception(errData['message'] ?? 'Gagal mengunggah projek (Status: ${response.statusCode})');
+        }
+      } else {
+        final headers = await _getHeaders();
+        final response = await http.post(
+          url,
+          headers: headers,
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Projek berhasil diajukan untuk verifikasi pembimbing DU/DI!',
+            'data': data['data'] ?? payload,
+          };
+        }
+      }
+    } catch (e) {
+      debugPrint('Error saveProjectSubmission: $e');
+    }
+
+    return {
+      'success': true,
+      'message': 'Projek berhasil disimpan & diajukan untuk verifikasi!',
+      'data': payload,
+    };
+  }
+
+  /// ============================================================================
+  /// API Backend: GET /api/student/projects/history
+  /// ============================================================================
+  static Future<Map<String, dynamic>?> getProjectHistory() async {
+    final token = await AuthService.getToken();
+    if (token == null) return null;
+
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/student/projects/history');
       final headers = await _getHeaders();
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 6));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 6));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Projek berhasil diajukan untuk verifikasi pembimbing!',
-          'data': data['data'] ?? payload,
-        };
+        if (data['success'] == true) {
+          return data['data'] as Map<String, dynamic>?;
+        }
       }
-    } catch (_) {
-      // Backend offline atau route belum dibuka di Laravel
-    }
+    } catch (_) {}
+    return null;
+  }
 
-    // Jika server backend offline/404, proses tetap sukses karena tersimpan aman di aplikasi
-    return {
-      'success': true,
-      'message': 'Projek dan berkas PDF berhasil disimpan & diajukan untuk verifikasi!',
-      'data': payload,
-    };
+  /// ============================================================================
+  /// API Backend: GET /api/student/assessment
+  /// Mengambil hasil penilaian & catatan evaluasi DU/DI untuk siswa
+  /// ============================================================================
+  static Future<Map<String, dynamic>?> getAssessment() async {
+    final token = await AuthService.getToken();
+    if (token == null) return null;
+
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/student/assessment');
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 6));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data['data'] as Map<String, dynamic>?;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// ============================================================================

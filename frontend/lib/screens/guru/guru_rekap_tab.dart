@@ -95,7 +95,7 @@ class _GuruRekapTabState extends State<GuruRekapTab> {
             // Header SMART PKL (Konsisten font 18pt bold)
             SmartPklHeader(
               title: 'Izin & Sakit',
-              onProfileTap: () => widget.onNavigateTab?.call(3),
+              onProfileTap: () => widget.onNavigateTab?.call(4),
             ),
 
             if (_isLoading)

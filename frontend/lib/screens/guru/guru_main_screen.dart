@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'guru_beranda_tab.dart';
 import 'guru_rekap_tab.dart';
 import 'guru_verifikasi_tab.dart';
+import 'guru_projek_tab.dart';
 import 'guru_profil_tab.dart';
 
 class GuruMainScreen extends StatefulWidget {
@@ -27,21 +28,23 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
 
   void _onTabTapped(int index) {
     setState(() {
-      _currentIndex = index.clamp(0, 3);
+      _currentIndex = index.clamp(0, 4);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 4 Tab Navigasi Guru Pembimbing:
+    // 5 Tab Navigasi Guru Pembimbing:
     // 0: Dashboard (Beranda)
     // 1: Izin & Sakit (Pengajuan Izin / Sakit Siswa Bimbingan)
     // 2: Logbook (Verifikasi Logbook Harian Siswa)
-    // 3: Profil
+    // 3: Projek (Pemantauan & Catatan Projek Siswa Terverifikasi DU/DI)
+    // 4: Profil
     final List<Widget> pages = [
       GuruBerandaTab(onNavigateTab: _onTabTapped),
       GuruRekapTab(onNavigateTab: _onTabTapped),
       GuruVerifikasiTab(onNavigateTab: _onTabTapped),
+      GuruProjekTab(onNavigateTab: _onTabTapped),
       const GuruProfilTab(),
     ];
 
@@ -109,6 +112,17 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
                 child: Icon(Icons.fact_check_rounded, size: 22),
               ),
               label: 'Logbook',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.assignment_outlined, size: 22),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.assignment_rounded, size: 22),
+              ),
+              label: 'Projek',
             ),
             BottomNavigationBarItem(
               icon: Padding(

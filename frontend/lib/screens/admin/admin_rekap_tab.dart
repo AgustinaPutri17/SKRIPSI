@@ -14,8 +14,8 @@ class StudentRekapItem {
   final String dudi;
   final String guruPembimbing;
   final int hariHadir;
+  final int totalHariWajib;
   final double? nilaiDudi;
-  final double? nilaiGuru;
 
   const StudentRekapItem({
     required this.nama,
@@ -24,18 +24,21 @@ class StudentRekapItem {
     required this.dudi,
     required this.guruPembimbing,
     required this.hariHadir,
+    this.totalHariWajib = 60,
     this.nilaiDudi,
-    this.nilaiGuru,
   });
 
-  /// Rumus Nilai Total: (Nilai DU/DI + Nilai Guru Pembimbing) / 2
+  /// Skor Persentase Kehadiran (0 - 100): (hariHadir / totalHariWajib) * 100
+  double get nilaiKehadiran {
+    if (totalHariWajib <= 0) return 100.0;
+    final pct = (hariHadir / totalHariWajib) * 100.0;
+    return pct > 100.0 ? 100.0 : (pct < 0.0 ? 0.0 : pct);
+  }
+
+  /// Rumus Nilai Total: (50% * Nilai DU/DI) + (50% * Nilai Kehadiran)
   double? get nilaiTotal {
-    if (nilaiDudi != null && nilaiGuru != null) {
-      return (nilaiDudi! + nilaiGuru!) / 2.0;
-    } else if (nilaiDudi != null) {
-      return nilaiDudi;
-    } else if (nilaiGuru != null) {
-      return nilaiGuru;
+    if (nilaiDudi != null) {
+      return (nilaiDudi! * 0.5) + (nilaiKehadiran * 0.5);
     }
     return null;
   }
@@ -167,14 +170,6 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
   Future<void> _loadNilaiData() async {
     try {
       final placements = await AdminService.getPlacements(perPage: 100);
-      final dashboard = await AdminService.getDashboard();
-
-      int attendanceToday = 1;
-      if (dashboard != null && dashboard['attendance_today'] != null) {
-        attendanceToday = dashboard['attendance_today'] is int
-            ? dashboard['attendance_today']
-            : int.tryParse(dashboard['attendance_today'].toString()) ?? 1;
-      }
 
       final List<StudentRekapItem> items = [];
 
@@ -184,6 +179,22 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           final location = p['location'] as Map<String, dynamic>?;
           final teacher = p['teacher'] as Map<String, dynamic>?;
 
+          final dudiScore = p['dudi_score'] != null
+              ? double.tryParse(p['dudi_score'].toString())
+              : (p['assessment'] != null && p['assessment']['dudi_score'] != null
+                  ? double.tryParse(p['assessment']['dudi_score'].toString())
+                  : null);
+
+          int attendancesCount = 1;
+          if (p['attendances_count'] != null) {
+            attendancesCount = int.tryParse(p['attendances_count'].toString()) ?? 1;
+          }
+
+          int totalWorkDays = 60;
+          if (location != null && location['total_work_days'] != null) {
+            totalWorkDays = int.tryParse(location['total_work_days'].toString()) ?? 60;
+          }
+
           if (student != null) {
             items.add(
               StudentRekapItem(
@@ -192,9 +203,9 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                 jurusan: student['major']?.toString() ?? student['class']?.toString() ?? 'Rekayasa Perangkat Lunak',
                 dudi: location?['name']?.toString() ?? 'Mitra DU/DI',
                 guruPembimbing: teacher?['name']?.toString() ?? 'Guru Pembimbing',
-                hariHadir: attendanceToday > 0 ? attendanceToday : 1,
-                nilaiDudi: null,
-                nilaiGuru: null,
+                hariHadir: attendancesCount > 0 ? attendancesCount : 1,
+                totalHariWajib: totalWorkDays > 0 ? totalWorkDays : 60,
+                nilaiDudi: dudiScore,
               ),
             );
           }
@@ -204,14 +215,14 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
       if (items.isEmpty) {
         items.add(
           const StudentRekapItem(
-            nama: 'Agustina Putri',
-            nis: '23150',
+            nama: 'AnnisaDina',
+            nis: '23158',
             jurusan: 'Rekayasa Perangkat Lunak',
-            dudi: 'PT SAID',
+            dudi: 'PT Solusi Teknologi Mandiri',
             guruPembimbing: 'Tina',
             hariHadir: 1,
-            nilaiDudi: null,
-            nilaiGuru: null,
+            totalHariWajib: 60,
+            nilaiDudi: 86.6,
           ),
         );
       }
@@ -224,14 +235,14 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
         setState(() {
           _students = [
             const StudentRekapItem(
-              nama: 'Agustina Putri',
-              nis: '23150',
+              nama: 'AnnisaDina',
+              nis: '23158',
               jurusan: 'Rekayasa Perangkat Lunak',
-              dudi: 'PT SAID',
+              dudi: 'PT Solusi Teknologi Mandiri',
               guruPembimbing: 'Tina',
               hariHadir: 1,
-              nilaiDudi: null,
-              nilaiGuru: null,
+              totalHariWajib: 60,
+              nilaiDudi: 86.6,
             ),
           ];
         });
@@ -279,10 +290,9 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
     return graded.fold(0.0, (acc, s) => acc + s.nilaiDudi!) / graded.length;
   }
 
-  double? get _rataRataNilaiGuru {
-    final graded = _students.where((s) => s.nilaiGuru != null).toList();
-    if (graded.isEmpty) return null;
-    return graded.fold(0.0, (acc, s) => acc + s.nilaiGuru!) / graded.length;
+  double? get _rataRataNilaiKehadiran {
+    if (_students.isEmpty) return null;
+    return _students.fold(0.0, (acc, s) => acc + s.nilaiKehadiran) / _students.length;
   }
 
   double? get _rataRataNilaiTotal {
@@ -431,7 +441,7 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           children: [
             SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
             SizedBox(width: 10),
-            Text('Menyiapkan file ekspor Excel presensi...'),
+            Expanded(child: Text('Menyiapkan file ekspor Excel presensi...')),
           ],
         ),
         duration: Duration(seconds: 2),
@@ -1618,16 +1628,16 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Nilai Total = ',
+                        'Nilai Akhir = ',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                       Text(
-                        '(Nilai DU/DI + Nilai Guru) ÷ 2',
+                        '(50% × Nilai DU/DI) + (50% × Nilai Kehadiran)',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          letterSpacing: 0.3,
+                          fontSize: 12.5,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
@@ -1663,13 +1673,13 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                 ),
                 Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
                 _buildStatItem(
-                  'Rata Nilai Guru',
-                  _rataRataNilaiGuru != null ? _rataRataNilaiGuru!.toStringAsFixed(1) : '-',
-                  const Color(0xFF7C3AED),
+                  'Rata Kehadiran',
+                  _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(1)}%' : '-',
+                  const Color(0xFF0D9488),
                 ),
                 Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
                 _buildStatItem(
-                  'Rata Nilai Total',
+                  'Rata Nilai Akhir',
                   _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : '-',
                   const Color(0xFF16A34A),
                 ),
@@ -1748,25 +1758,25 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'DU/DI',
+                          'DU/DI (50%)',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'Guru',
+                          'Hadir (50%)',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'Total',
+                          'Nilai Akhir',
                           textAlign: TextAlign.right,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
                         ),
                       ),
                     ],
@@ -1850,12 +1860,12 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          _rataRataNilaiGuru != null ? _rataRataNilaiGuru!.toStringAsFixed(1) : '-',
+                          _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(0)}%' : '-',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF7C3AED),
+                            color: Color(0xFF0D9488),
                           ),
                         ),
                       ),
@@ -2027,8 +2037,10 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
   }
 
   Widget _buildStudentRow(StudentRekapItem s) {
-    final String nilaiDudiText = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(0) : '-';
-    final String nilaiGuruText = s.nilaiGuru != null ? s.nilaiGuru!.toStringAsFixed(0) : '-';
+    final String nilaiDudiText = s.nilaiDudi != null
+        ? (s.nilaiDudi! % 1 == 0 ? s.nilaiDudi!.toInt().toString() : s.nilaiDudi!.toStringAsFixed(1))
+        : '-';
+    final String nilaiKehadiranText = s.nilaiKehadiran.toStringAsFixed(1);
     final String nilaiTotalText = s.nilaiTotal != null ? s.nilaiTotal!.toStringAsFixed(1) : '-';
 
     return Padding(
@@ -2060,7 +2072,7 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'Hadir: ${s.hariHadir} Hari',
+                    'Hadir: ${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)',
                     style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
                   ),
                 ),
@@ -2082,12 +2094,12 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           Expanded(
             flex: 2,
             child: Text(
-              nilaiGuruText,
+              nilaiKehadiranText,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: s.nilaiGuru != null ? const Color(0xFF7C3AED) : const Color(0xFF94A3B8),
+                color: Color(0xFF0D9488),
               ),
             ),
           ),
@@ -2165,7 +2177,7 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           children: [
             SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
             SizedBox(width: 10),
-            Text('Menyiapkan PDF logbook & foto kegiatan...'),
+            Expanded(child: Text('Menyiapkan PDF logbook & foto kegiatan...')),
           ],
         ),
         duration: Duration(seconds: 2),
@@ -2264,12 +2276,12 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     ),
                     const Divider(height: 14),
                     _buildMetaRow(
-                      'Rata-rata Nilai Guru',
-                      _rataRataNilaiGuru != null ? _rataRataNilaiGuru!.toStringAsFixed(1) : 'Belum ada nilai',
+                      'Rata-rata Kehadiran',
+                      _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(1)}%' : 'Belum ada data',
                     ),
                     const Divider(height: 14),
                     _buildMetaRow(
-                      'Rata-rata Nilai Total',
+                      'Rata-rata Nilai Akhir',
                       _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : 'Belum ada nilai',
                     ),
                     const Divider(height: 14),
@@ -2284,14 +2296,15 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         final buffer = StringBuffer();
-                        buffer.writeln('No\tNIS\tNama Siswa\tJurusan\tMitra DUDI\tGuru Pembimbing\tTotal Hadir\tNilai DUDI\tNilai Guru\tNilai Total');
+                        buffer.writeln('No\tNIS\tNama Siswa\tJurusan\tMitra DUDI\tGuru Pembimbing\tKehadiran\tNilai DUDI (50%)\tNilai Kehadiran (50%)\tNilai Akhir');
                         for (int i = 0; i < _students.length; i++) {
                           final s = _students[i];
-                          final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(0) : '-';
-                          final guru = s.nilaiGuru != null ? s.nilaiGuru!.toStringAsFixed(0) : '-';
+                          final hadir = '${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)';
+                          final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(1) : '-';
+                          final nilaiHadir = s.nilaiKehadiran.toStringAsFixed(1);
                           final total = s.nilaiTotal != null ? s.nilaiTotal!.toStringAsFixed(1) : '-';
                           buffer.writeln(
-                            '${i + 1}\t${s.nis}\t${s.nama}\t${s.jurusan}\t${s.dudi}\t${s.guruPembimbing}\t${s.hariHadir} Hari\t$dudi\t$guru\t$total',
+                            '${i + 1}\t${s.nis}\t${s.nama}\t${s.jurusan}\t${s.dudi}\t${s.guruPembimbing}\t$hadir\t$dudi\t$nilaiHadir\t$total',
                           );
                         }
                         Clipboard.setData(ClipboardData(text: buffer.toString()));
@@ -2328,13 +2341,14 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         final buffer = StringBuffer();
-                        buffer.writeln('No,NIS,Nama Siswa,Jurusan,Mitra DUDI,Guru Pembimbing,Total Hadir,Nilai DUDI,Nilai Guru,Nilai Total');
+                        buffer.writeln('No,NIS,Nama Siswa,Jurusan,Mitra DUDI,Guru Pembimbing,Kehadiran,Nilai DUDI (50%),Nilai Kehadiran (50%),Nilai Akhir');
                         for (int i = 0; i < _students.length; i++) {
                           final s = _students[i];
-                          final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(0) : '-';
-                          final guru = s.nilaiGuru != null ? s.nilaiGuru!.toStringAsFixed(0) : '-';
+                          final hadir = '${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)';
+                          final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(1) : '-';
+                          final nilaiHadir = s.nilaiKehadiran.toStringAsFixed(1);
                           final total = s.nilaiTotal != null ? s.nilaiTotal!.toStringAsFixed(1) : '-';
-                          buffer.writeln('${i + 1},"${s.nis}","${s.nama}","${s.jurusan}","${s.dudi}","${s.guruPembimbing}","${s.hariHadir} Hari",$dudi,$guru,$total');
+                          buffer.writeln('${i + 1},"${s.nis}","${s.nama}","${s.jurusan}","${s.dudi}","${s.guruPembimbing}","$hadir",$dudi,$nilaiHadir,$total');
                         }
                         FileDownloadHelper.download(buffer.toString(), 'Rekap_Nilai_PKL_${DateTime.now().millisecondsSinceEpoch}.csv');
                         Navigator.pop(ctx);
@@ -2449,9 +2463,9 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     const SizedBox(height: 4),
                     _buildMetaRow('Rata-rata Nilai DU/DI', _rataRataNilaiDudi != null ? _rataRataNilaiDudi!.toStringAsFixed(1) : '-'),
                     const SizedBox(height: 4),
-                    _buildMetaRow('Rata-rata Nilai Guru', _rataRataNilaiGuru != null ? _rataRataNilaiGuru!.toStringAsFixed(1) : '-'),
+                    _buildMetaRow('Rata-rata Kehadiran', _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(1)}%' : '-'),
                     const SizedBox(height: 4),
-                    _buildMetaRow('Rata-rata Nilai Total', _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : '-'),
+                    _buildMetaRow('Rata-rata Nilai Akhir', _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : '-'),
                     const SizedBox(height: 16),
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

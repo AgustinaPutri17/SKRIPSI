@@ -314,7 +314,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
                             onTap: () => widget.onNavigateTab?.call(4),
                           ),
                           const SizedBox(width: 14),
-                          // Spacer transparan kolom ke-3
                           const Expanded(child: SizedBox()),
                         ],
                       ),

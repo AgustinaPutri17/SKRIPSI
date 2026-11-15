@@ -15,6 +15,8 @@ use App\Models\Attendance;
 use App\Models\Journal;
 use App\Models\Location;
 use App\Models\Placement;
+use App\Models\ProjectReview;
+use App\Models\ProjectSubmission;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -341,6 +343,146 @@ class SupervisorController extends Controller
                 ->where('attendance_date', $today)->count(),
             'journals_pending' => Journal::whereIn('placement_id', $placementIds)
                 ->where('status', 'submitted')->count(),
+        ]);
+    }
+
+    /**
+     * List project submissions from students under this supervisor.
+     */
+    public function getProjects(Request $request): JsonResponse
+    {
+        $placementIds = $this->getSupervisorPlacementIds($request);
+
+        $submissions = ProjectSubmission::with(['placement.student.user', 'reviews.reviewer'])
+            ->whereIn('placement_id', $placementIds)
+            ->latest('updated_at')
+            ->get();
+
+        $data = $submissions->map(function ($sub) {
+            $student = $sub->placement?->student;
+            return [
+                'id' => $sub->id,
+                'placement_id' => $sub->placement_id,
+                'student' => $student ? [
+                    'id' => $student->id,
+                    'name' => $student->user->name ?? $student->name,
+                    'nis' => $student->nis,
+                    'class' => $student->class,
+                    'major' => $student->major,
+                ] : null,
+                'title' => $sub->title,
+                'description' => $sub->description,
+                'plan' => $sub->plan,
+                'result' => $sub->result,
+                'document_name' => $sub->document_name,
+                'document_size' => $sub->document_size,
+                'document_url' => $sub->document_path ? asset('storage/' . $sub->document_path) : null,
+                'status' => $sub->status,
+                'submitted_at' => $sub->submitted_at?->toIso8601String(),
+                'updated_at' => $sub->updated_at?->toIso8601String(),
+                'reviews' => $sub->reviews->map(function ($r) {
+                    $role = $r->reviewer?->role;
+                    return [
+                        'id' => $r->id,
+                        'decision' => $r->decision,
+                        'note' => $r->note,
+                        'reviewer_name' => $r->reviewer?->name,
+                        'reviewer_role' => $role,
+                        'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
+                        'created_at' => $r->created_at?->toIso8601String(),
+                    ];
+                }),
+            ];
+        });
+
+        return $this->success($data);
+    }
+
+    /**
+     * Detail of a student's project submission.
+     */
+    public function showProject(Request $request, int $id): JsonResponse
+    {
+        $placementIds = $this->getSupervisorPlacementIds($request);
+
+        $sub = ProjectSubmission::with(['placement.student.user', 'reviews.reviewer'])
+            ->whereIn('placement_id', $placementIds)
+            ->findOrFail($id);
+
+        $student = $sub->placement?->student;
+
+        return $this->success([
+            'id' => $sub->id,
+            'placement_id' => $sub->placement_id,
+            'student' => $student ? [
+                'id' => $student->id,
+                'name' => $student->user->name ?? $student->name,
+                'nis' => $student->nis,
+                'class' => $student->class,
+                'major' => $student->major,
+            ] : null,
+            'title' => $sub->title,
+            'description' => $sub->description,
+            'plan' => $sub->plan,
+            'result' => $sub->result,
+            'document_name' => $sub->document_name,
+            'document_size' => $sub->document_size,
+            'document_url' => $sub->document_path ? asset('storage/' . $sub->document_path) : null,
+            'status' => $sub->status,
+            'submitted_at' => $sub->submitted_at?->toIso8601String(),
+            'updated_at' => $sub->updated_at?->toIso8601String(),
+            'reviews' => $sub->reviews->map(function ($r) {
+                $role = $r->reviewer?->role;
+                return [
+                    'id' => $r->id,
+                    'decision' => $r->decision,
+                    'note' => $r->note,
+                    'reviewer_name' => $r->reviewer?->name,
+                    'reviewer_role' => $role,
+                    'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
+                    'created_at' => $r->created_at?->toIso8601String(),
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Verify (approve or request revision) a student's project submission.
+     */
+    public function verifyProject(Request $request, int $id): JsonResponse
+    {
+        $placementIds = $this->getSupervisorPlacementIds($request);
+
+        $sub = ProjectSubmission::whereIn('placement_id', $placementIds)->findOrFail($id);
+
+        $request->validate([
+            'decision' => 'required|string|in:approved,revision,rejected',
+            'note' => 'nullable|string|max:2000',
+        ]);
+
+        $decision = in_array(strtolower($request->input('decision')), ['revision', 'rejected']) ? 'revision' : 'approved';
+
+        if ($decision === 'revision' && empty(trim($request->input('note', '')))) {
+            return $this->error('Catatan evaluasi / instruktur wajib diisi saat meminta revisi projek.', 422);
+        }
+
+        $review = ProjectReview::create([
+            'project_submission_id' => $sub->id,
+            'reviewer_id' => $request->user()->id,
+            'decision' => $decision,
+            'note' => $request->input('note'),
+            'created_at' => now(),
+        ]);
+
+        $sub->status = $decision;
+        $sub->save();
+
+        return $this->success([
+            'submission' => $sub->fresh(['reviews.reviewer']),
+            'review' => $review,
+            'message' => $decision === 'approved'
+                ? 'Projek siswa berhasil disetujui (ACC).'
+                : 'Projek siswa dikembalikan untuk revisi beserta catatan instruktur.',
         ]);
     }
 }

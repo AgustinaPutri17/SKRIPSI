@@ -17,7 +17,7 @@ class PlacementController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Placement::with(['student', 'location', 'period', 'teacher', 'fieldSupervisor']);
+        $query = Placement::with(['student', 'location', 'period', 'teacher', 'fieldSupervisor', 'assessment']);
 
         if ($request->has('student_id')) {
             $query->where('student_id', $request->student_id);

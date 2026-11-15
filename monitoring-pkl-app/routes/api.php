@@ -32,7 +32,7 @@ Route::get('/seed-db', function () {
         'output' => Artisan::output(),
     ]);
 });
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
 
 // ─────────────────────────────────────────────
 // Authenticated routes
@@ -42,6 +42,25 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth endpoints
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/user/change-password', [AuthController::class, 'changePassword']);
+
+    // Direct stream/view of project document (PDF) for all authenticated roles
+    Route::get('/projects/{id}/document', function ($id) {
+        $project = \App\Models\ProjectSubmission::findOrFail((int) $id);
+        if (!$project->document_path) {
+            return response()->json(['message' => 'Projek ini tidak memiliki berkas dokumen terlampir.'], 404);
+        }
+        $path = storage_path('app/public/' . $project->document_path);
+        if (!file_exists($path)) {
+            return response()->json(['message' => 'Berkas fisik tidak ditemukan di server.'], 404);
+        }
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . ($project->document_name ?? 'dokumen_projek.pdf') . '"',
+        ]);
+    });
 
     // ── Admin routes ──────────────────────────
     Route::prefix('admin')->middleware('role:admin')->group(function () {
@@ -112,6 +131,16 @@ Route::middleware('auth:sanctum')->group(function () {
         // Leave Requests (Izin & Sakit)
         Route::get('/leave-requests', [StudentController::class, 'leaveRequests']);
         Route::post('/leave-requests', [StudentController::class, 'storeLeaveRequest']);
+
+        // Projects (Projek Siswa)
+        Route::get('/projects', [StudentController::class, 'getProject']);
+        Route::get('/project', [StudentController::class, 'getProject']);
+        Route::post('/projects', [StudentController::class, 'saveProject']);
+        Route::post('/project', [StudentController::class, 'saveProject']);
+        Route::get('/projects/history', [StudentController::class, 'getProjectHistory']);
+
+        // Assessment (Nilai & Catatan PKL DU/DI)
+        Route::get('/assessment', [StudentController::class, 'getAssessment']);
     });
 
     // ── Teacher routes ────────────────────────
@@ -130,6 +159,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Leave Requests (Izin & Sakit)
         Route::get('/leave-requests', [TeacherController::class, 'leaveRequests']);
         Route::post('/leave-requests/{id}/verify', [TeacherController::class, 'verifyLeaveRequest']);
+
+        // Projects (Monitoring & Notes by Teacher)
+        Route::get('/projects', [TeacherController::class, 'getProjects']);
+        Route::get('/projects/{id}', [TeacherController::class, 'showProject']);
+        Route::post('/projects/{id}/review', [TeacherController::class, 'reviewProject']);
     });
 
     // ── Field Supervisor routes ───────────────
@@ -140,6 +174,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/students/{id}', [SupervisorController::class, 'showStudent']);
         Route::get('/students/{id}/assessment', [SupervisorController::class, 'getStudentAssessment']);
         Route::post('/students/{id}/assessment', [SupervisorController::class, 'saveStudentAssessment']);
+
+        // Projects (Verification & notes by Supervisor)
+        Route::get('/projects', [SupervisorController::class, 'getProjects']);
+        Route::get('/projects/{id}', [SupervisorController::class, 'showProject']);
+        Route::post('/projects/{id}/verify', [SupervisorController::class, 'verifyProject']);
 
         // Field Supervisor Location Management
         Route::get('/locations', [SupervisorController::class, 'locations']);

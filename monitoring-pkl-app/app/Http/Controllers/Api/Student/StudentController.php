@@ -13,9 +13,12 @@ use App\Http\Resources\JournalResource;
 use App\Http\Resources\LeaveRequestResource;
 use App\Http\Resources\PlacementResource;
 use App\Http\Resources\StudentResource;
+use App\Models\Assessment;
 use App\Models\Attendance;
 use App\Models\Journal;
 use App\Models\LeaveRequest;
+use App\Models\ProjectReview;
+use App\Models\ProjectSubmission;
 use App\Services\AttendanceService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -365,7 +368,11 @@ class StudentController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'required|string|max:1000',
-            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'attachment' => 'required|file|mimes:jpeg,png,jpg,pdf,doc,docx|max:5120',
+        ], [
+            'attachment.required' => 'Bukti dokumen atau foto surat izin/sakit wajib dilampirkan.',
+            'attachment.mimes' => 'Bukti berkas harus berformat PDF atau gambar (JPG, PNG).',
+            'attachment.max' => 'Ukuran berkas maksimal 5 MB.',
         ]);
 
         $attachmentPath = null;
@@ -388,5 +395,193 @@ class StudentController extends Controller
             'Pengajuan izin/sakit berhasil dikirim ke Guru Pembimbing & Instruktur.',
             201
         );
+    }
+
+    // ── Project Submissions ──
+
+    public function getProject(Request $request): JsonResponse
+    {
+        $student = $request->user()->student;
+        $placement = $student?->activePlacement();
+
+        if (!$placement) {
+            return $this->error('Siswa belum memiliki penempatan PKL aktif.', 404);
+        }
+
+        $submissions = ProjectSubmission::with(['reviews.reviewer'])
+            ->where('placement_id', $placement->id)
+            ->latest('id')
+            ->get();
+
+        $projectsData = $submissions->map(function ($sub) {
+            $data = $sub->toArray();
+            $data['document_url'] = $sub->document_path ? asset('storage/' . $sub->document_path) : null;
+            $data['reviews'] = $sub->reviews->map(function ($r) {
+                $role = $r->reviewer?->role;
+                return [
+                    'id' => $r->id,
+                    'decision' => $r->decision,
+                    'note' => $r->note,
+                    'reviewer_name' => $r->reviewer?->name,
+                    'reviewer_role' => $role,
+                    'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
+                    'created_at' => $r->created_at?->toIso8601String(),
+                ];
+            });
+            return $data;
+        });
+
+        $latestSubmission = $projectsData->first();
+
+        return $this->success([
+            'projects' => $projectsData,
+            'submission' => $latestSubmission,
+        ]);
+    }
+
+    public function saveProject(Request $request): JsonResponse
+    {
+        $student = $request->user()->student;
+        $placement = $student?->activePlacement();
+
+        if (!$placement) {
+            return $this->error('Siswa belum memiliki penempatan PKL aktif.', 422);
+        }
+
+        $validated = $request->validate([
+            'id' => 'nullable|integer',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'plan' => 'nullable|string',
+            'result' => 'nullable|string',
+            'status' => 'nullable|string|in:draft,pending,submitted,approved,revision',
+            'document' => 'nullable|file|mimes:pdf|max:15360',
+            'document_name' => 'nullable|string|max:255',
+            'document_size' => 'nullable|integer',
+        ]);
+
+        if ($request->filled('id') && (int)$request->input('id') > 0) {
+            $submission = ProjectSubmission::where('placement_id', $placement->id)->findOrFail((int)$request->input('id'));
+        } else {
+            $submission = new ProjectSubmission();
+            $submission->placement_id = $placement->id;
+        }
+
+        $submission->title = $validated['title'];
+        $submission->description = $validated['description'] ?? $validated['title'];
+        $submission->plan = $validated['plan'] ?? null;
+        $submission->result = $validated['result'] ?? null;
+
+        if ($request->hasFile('document')) {
+            $file = $request->file('document');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+            $path = $file->storeAs('projects/' . $placement->id, $filename, 'public');
+            $submission->document_path = $path;
+            $submission->document_name = $file->getClientOriginalName();
+            $submission->document_size = $file->getSize();
+        } elseif ($request->filled('document_name') && !$submission->document_path) {
+            $submission->document_name = $request->input('document_name');
+            $submission->document_size = $request->input('document_size', 0);
+        }
+
+        $requestedStatus = strtolower($request->input('status', 'draft'));
+        if (in_array($requestedStatus, ['submitted', 'pending'])) {
+            $submission->status = 'pending';
+            $submission->submitted_at = now();
+        } elseif ($requestedStatus === 'draft') {
+            $submission->status = 'draft';
+        }
+
+        $submission->save();
+
+        $submission->load(['reviews.reviewer']);
+        $data = $submission->toArray();
+        $data['document_url'] = $submission->document_path ? asset('storage/' . $submission->document_path) : null;
+        $data['reviews'] = $submission->reviews->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'decision' => $r->decision,
+                'note' => $r->note,
+                'reviewer_name' => $r->reviewer?->name,
+                'created_at' => $r->created_at?->toIso8601String(),
+            ];
+        });
+
+        return $this->success(
+            $data,
+            $submission->status === 'pending'
+                ? 'Projek berhasil diajukan dan sedang menunggu verifikasi pembimbing DU/DI.'
+                : 'Draf projek berhasil disimpan.',
+            200
+        );
+    }
+
+    public function getProjectHistory(Request $request): JsonResponse
+    {
+        $student = $request->user()->student;
+        $placement = $student?->activePlacement();
+
+        if (!$placement) {
+            return $this->error('Siswa belum memiliki penempatan PKL aktif.', 404);
+        }
+
+        $submission = ProjectSubmission::with(['reviews.reviewer'])
+            ->where('placement_id', $placement->id)
+            ->latest('id')
+            ->first();
+
+        if (!$submission) {
+            return $this->success([], 'Belum ada riwayat projek.');
+        }
+
+        $reviews = $submission->reviews->map(function ($r) {
+            $role = $r->reviewer?->role;
+            return [
+                'id' => $r->id,
+                'decision' => $r->decision,
+                'note' => $r->note,
+                'reviewer_name' => $r->reviewer?->name,
+                'reviewer_role' => $role,
+                'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
+                'created_at' => $r->created_at?->toIso8601String(),
+            ];
+        });
+
+        return $this->success([
+            'submission' => array_merge($submission->toArray(), [
+                'document_url' => $submission->document_path ? asset('storage/' . $submission->document_path) : null,
+            ]),
+            'reviews' => $reviews,
+        ]);
+    }
+
+    /**
+     * Get PKL assessment and notes from DU/DI for the student.
+     */
+    public function getAssessment(Request $request): JsonResponse
+    {
+        $student = $request->user()->student;
+        $placement = $student?->activePlacement();
+
+        if (!$placement) {
+            return $this->error('Siswa belum memiliki penempatan PKL aktif.', 404);
+        }
+
+        $assessment = Assessment::where('placement_id', $placement->id)->first();
+
+        if (!$assessment || $assessment->dudi_score === null) {
+            return $this->success(null, 'Nilai PKL belum diinput oleh pihak DU/DI.');
+        }
+
+        return $this->success([
+            'id' => $assessment->id,
+            'dudi_score' => (float)$assessment->dudi_score,
+            'dudi_components' => $assessment->dudi_components,
+            'dudi_notes' => $assessment->dudi_notes,
+            'dudi_scored_at' => $assessment->dudi_scored_at?->toIso8601String(),
+            'teacher_score' => $assessment->teacher_score !== null ? (float)$assessment->teacher_score : null,
+            'final_score' => $assessment->final_score !== null ? (float)$assessment->final_score : null,
+            'status' => $assessment->status,
+        ]);
     }
 }

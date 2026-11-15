@@ -57,6 +57,28 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
   TimeOfDay _checkInTime = const TimeOfDay(hour: 8, minute: 0);
   TimeOfDay _checkOutTime = const TimeOfDay(hour: 16, minute: 0);
 
+  String _workDays = 'monday_friday';
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  int _calculateWorkDays() {
+    final start = _startDate ?? DateTime(DateTime.now().year, 7, 1);
+    final end = _endDate ?? DateTime(DateTime.now().year, 9, 30);
+    if (start.isAfter(end)) return 60;
+    int count = 0;
+    DateTime curr = start;
+    while (!curr.isAfter(end)) {
+      final weekday = curr.weekday; // 1 = Mon, ..., 5 = Fri, 6 = Sat, 7 = Sun
+      if (_workDays == 'monday_saturday') {
+        if (weekday >= 1 && weekday <= 6) count++;
+      } else {
+        if (weekday >= 1 && weekday <= 5) count++;
+      }
+      curr = curr.add(const Duration(days: 1));
+    }
+    return count > 0 ? count : 1;
+  }
+
   bool _isLoadingGps = false;
   bool _isSaving = false;
   bool _isLoadingData = false;
@@ -132,6 +154,19 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
       }
       if (loc['check_out_time'] != null) {
         _checkOutTime = _parseTime(loc['check_out_time'], _checkOutTime);
+      }
+      if (loc['work_days'] != null && loc['work_days'].toString().isNotEmpty) {
+        _workDays = loc['work_days'].toString();
+      }
+      if (loc['start_date'] != null) {
+        _startDate = DateTime.tryParse(loc['start_date'].toString());
+      } else {
+        _startDate ??= DateTime(DateTime.now().year, 7, 1);
+      }
+      if (loc['end_date'] != null) {
+        _endDate = DateTime.tryParse(loc['end_date'].toString());
+      } else {
+        _endDate ??= DateTime(DateTime.now().year, 9, 30);
       }
     });
 
@@ -269,6 +304,12 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
 
     final checkInStr = _formatTimeOfDay(_checkInTime);
     final checkOutStr = _formatTimeOfDay(_checkOutTime);
+    final startDateStr = _startDate != null
+        ? "${_startDate!.year.toString().padLeft(4, '0')}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')}"
+        : null;
+    final endDateStr = _endDate != null
+        ? "${_endDate!.year.toString().padLeft(4, '0')}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}"
+        : null;
 
     Map<String, dynamic> result;
     if (_locationId != null) {
@@ -281,6 +322,9 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
         radius: radius,
         checkInTime: checkInStr,
         checkOutTime: checkOutStr,
+        workDays: _workDays,
+        startDate: startDateStr,
+        endDate: endDateStr,
       );
     } else {
       result = await SupervisorService.createLocation(
@@ -291,6 +335,9 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
         radius: radius,
         checkInTime: checkInStr,
         checkOutTime: checkOutStr,
+        workDays: _workDays,
+        startDate: startDateStr,
+        endDate: endDateStr,
       );
     }
 
@@ -1269,6 +1316,305 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                                   ],
                                 ),
 
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Card Hari Kerja & Periode Pelaksanaan PKL (Bobot Kehadiran)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.cardBorder),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.calendar_month_rounded,
+                                        color: Color(0xFF2563EB),
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Hari Kerja & Periode PKL',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Menentukan total hari kerja untuk perhitungan nilai kehadiran (bobot 50%)',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Pilihan Hari Kerja (Senin-Jumat vs Senin-Sabtu)
+                                const Text(
+                                  'Sistem Hari Kerja Kantor / Industri',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => setState(() => _workDays = 'monday_friday'),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                                          decoration: BoxDecoration(
+                                            color: _workDays == 'monday_friday' ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: _workDays == 'monday_friday' ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                                              width: _workDays == 'monday_friday' ? 1.5 : 1,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.work_history_rounded,
+                                                size: 20,
+                                                color: _workDays == 'monday_friday' ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                'Senin – Jumat',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: _workDays == 'monday_friday' ? const Color(0xFF1E40AF) : AppColors.textPrimary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '5 Hari Kerja',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: _workDays == 'monday_friday' ? const Color(0xFF2563EB) : AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => setState(() => _workDays = 'monday_saturday'),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                                          decoration: BoxDecoration(
+                                            color: _workDays == 'monday_saturday' ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: _workDays == 'monday_saturday' ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                                              width: _workDays == 'monday_saturday' ? 1.5 : 1,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.domain_rounded,
+                                                size: 20,
+                                                color: _workDays == 'monday_saturday' ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                'Senin – Sabtu',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: _workDays == 'monday_saturday' ? const Color(0xFF1E40AF) : AppColors.textPrimary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '6 Hari Kerja',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: _workDays == 'monday_saturday' ? const Color(0xFF2563EB) : AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Rentang Periode PKL (Mulai & Selesai)
+                                const Text(
+                                  'Rentang Tanggal Pelaksanaan PKL',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    // Tanggal Mulai
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final picked = await showDatePicker(
+                                            context: context,
+                                            initialDate: _startDate ?? DateTime(DateTime.now().year, 7, 1),
+                                            firstDate: DateTime(2020),
+                                            lastDate: DateTime(2035),
+                                            helpText: 'PILIH TANGGAL MULAI PKL',
+                                          );
+                                          if (picked != null) {
+                                            setState(() => _startDate = picked);
+                                          }
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF8FAFC),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Mulai PKL',
+                                                style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    _startDate != null
+                                                        ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
+                                                        : 'Pilih Tanggal',
+                                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                                  ),
+                                                  const Icon(Icons.calendar_today_rounded, size: 14, color: Color(0xFF2563EB)),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+
+                                    // Tanggal Selesai
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final picked = await showDatePicker(
+                                            context: context,
+                                            initialDate: _endDate ?? DateTime(DateTime.now().year, 9, 30),
+                                            firstDate: DateTime(2020),
+                                            lastDate: DateTime(2035),
+                                            helpText: 'PILIH TANGGAL SELESAI PKL',
+                                          );
+                                          if (picked != null) {
+                                            setState(() => _endDate = picked);
+                                          }
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF8FAFC),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Selesai PKL',
+                                                style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    _endDate != null
+                                                        ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
+                                                        : 'Pilih Tanggal',
+                                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                                  ),
+                                                  const Icon(Icons.event_available_rounded, size: 14, color: Color(0xFF2563EB)),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Ringkasan Total Hari Kerja Aktif
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF2563EB)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Total Hari Kerja Wajib: ${_calculateWorkDays()} Hari (${_workDays == 'monday_saturday' ? '6 Hari/Minggu' : '5 Hari/Minggu'}). Data ini langsung terkirim ke Admin untuk menghitung nilai kehadiran (50%).',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E40AF), height: 1.3),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           ),

@@ -188,6 +188,9 @@ class SupervisorService {
     String? checkInTime,
     String? checkOutTime,
     String? checkOutEnd,
+    String? workDays,
+    String? startDate,
+    String? endDate,
   }) async {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/locations');
     try {
@@ -202,6 +205,9 @@ class SupervisorService {
         if (checkInTime != null) 'check_in_time': checkInTime,
         if (checkOutTime != null) 'check_out_time': checkOutTime,
         if (checkOutEnd != null) 'check_out_end': checkOutEnd,
+        if (workDays != null) 'work_days': workDays,
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
       };
 
       final response = await http
@@ -246,6 +252,9 @@ class SupervisorService {
     String? checkInTime,
     String? checkOutTime,
     String? checkOutEnd,
+    String? workDays,
+    String? startDate,
+    String? endDate,
   }) async {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/locations/$id');
     try {
@@ -260,6 +269,9 @@ class SupervisorService {
       if (checkInTime != null) body['check_in_time'] = checkInTime;
       if (checkOutTime != null) body['check_out_time'] = checkOutTime;
       if (checkOutEnd != null) body['check_out_end'] = checkOutEnd;
+      if (workDays != null) body['work_days'] = workDays;
+      if (startDate != null) body['start_date'] = startDate;
+      if (endDate != null) body['end_date'] = endDate;
 
       final response = await http
           .put(
@@ -406,6 +418,88 @@ class SupervisorService {
       return {
         'success': false,
         'message': data['message'] ?? 'Gagal menolak logbook.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Gagal terhubung ke server ($e)',
+      };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 7.4 VERIFIKASI PROJEK SISWA
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /// GET /api/supervisor/projects
+  /// Mengambil daftar riwayat pengajuan projek siswa bimbingan
+  static Future<List<Map<String, dynamic>>> getProjects() async {
+    final url = Uri.parse('${AuthService.baseUrl}/supervisor/projects');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final list = data['data'] as List<dynamic>?;
+          if (list != null) {
+            return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// GET /api/supervisor/projects/{id}
+  /// Detail projek siswa beserta lampiran dokumen & riwayat review
+  static Future<Map<String, dynamic>?> getProjectDetail(int id) async {
+    final url = Uri.parse('${AuthService.baseUrl}/supervisor/projects/$id');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data['data'] as Map<String, dynamic>?;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// POST /api/supervisor/projects/{id}/verify
+  /// Verifikasi (Setujui atau Minta Revisi) projek siswa dengan catatan instruktur
+  static Future<Map<String, dynamic>> verifyProject({
+    required int id,
+    required String decision, // 'approved' atau 'revision'
+    String? note,
+  }) async {
+    final url = Uri.parse('${AuthService.baseUrl}/supervisor/projects/$id/verify');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'decision': decision,
+          if (note != null && note.isNotEmpty) 'note': note,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Status projek berhasil diperbarui.',
+          'data': data['data'],
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Gagal memverifikasi projek siswa.',
       };
     } catch (e) {
       return {

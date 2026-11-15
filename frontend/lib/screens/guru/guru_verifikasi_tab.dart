@@ -95,7 +95,7 @@ class _GuruVerifikasiTabState extends State<GuruVerifikasiTab> {
             // Header SMART PKL (Konsisten font 18pt bold)
             SmartPklHeader(
               title: 'Verifikasi Logbook',
-              onProfileTap: () => widget.onNavigateTab?.call(3),
+              onProfileTap: () => widget.onNavigateTab?.call(4),
             ),
             Expanded(
               child: RefreshIndicator(
@@ -531,18 +531,17 @@ class _GuruVerifikasiTabState extends State<GuruVerifikasiTab> {
     VoidCallback? onDetailTap,
     VoidCallback? onBeriCatatanTap,
   }) {
+    final initials = namaSiswa.isNotEmpty
+        ? namaSiswa.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join('').toUpperCase()
+        : 'SW';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isApproved
-              ? const Color(0xFF86EFAC)
-              : isRejected
-                  ? const Color(0xFFFCA5A5)
-                  : AppColors.cardBorder,
-          width: 1.2,
+          color: const Color(0xFFE2E8F0),
         ),
         boxShadow: [
           BoxShadow(
@@ -555,121 +554,48 @@ class _GuruVerifikasiTabState extends State<GuruVerifikasiTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Siswa: Avatar Inisial & Info Siswa (sesuai tab Projek)
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFEFF6FF),
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF2563EB),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: isApproved
-                          ? const Color(0xFFDCFCE7)
-                          : isRejected
-                              ? const Color(0xFFFEE2E2)
-                              : const Color(0xFFFEF3C7),
-                      child: Icon(
-                        isApproved
-                            ? Icons.check_circle_rounded
-                            : isRejected
-                                ? Icons.cancel_rounded
-                                : Icons.schedule_rounded,
-                        size: 20,
-                        color: isApproved
-                            ? const Color(0xFF16A34A)
-                            : isRejected
-                                ? AppColors.error
-                                : const Color(0xFFD97706),
+                    Text(
+                      namaSiswa,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            namaSiswa,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$kelas • $dudi',
-                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    const SizedBox(height: 2),
+                    Text(
+                      '$kelas • $dudi',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                    decoration: BoxDecoration(
-                      color: isApproved
-                          ? const Color(0xFFDCFCE7)
-                          : isRejected
-                              ? const Color(0xFFFEE2E2)
-                              : const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      isApproved
-                          ? 'Sudah Di-ACC'
-                          : isRejected
-                              ? 'Ditolak'
-                              : 'Perlu ACC',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: isApproved
-                            ? const Color(0xFF16A34A)
-                            : isRejected
-                                ? AppColors.error
-                                : const Color(0xFFD97706),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: hasTeacherNote ? const Color(0xFFEFF6FF) : const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: hasTeacherNote ? const Color(0xFFBFDBFE) : const Color(0xFFFDE68A),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          hasTeacherNote ? Icons.check_circle_rounded : Icons.pending_outlined,
-                          size: 11,
-                          color: hasTeacherNote ? const Color(0xFF2563EB) : const Color(0xFFD97706),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          hasTeacherNote ? 'Sudah Diulas' : 'Belum Diulas',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: hasTeacherNote ? const Color(0xFF1D4ED8) : const Color(0xFFB45309),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ],
           ),

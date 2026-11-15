@@ -13,7 +13,7 @@ class AuthService {
   static const String railwayProductionUrl = 'https://skripsi-production-ce547be8.up.railway.app/api';
 
   /// URL Cloudflare Tunnel cadangan
-  static const String cloudflareTunnelUrl = 'https://slow-halifax-ddr-parties.trycloudflare.com/api';
+  static const String cloudflareTunnelUrl = 'https://poem-pierre-get-lone.trycloudflare.com/api';
 
   static String? _cachedBaseUrl;
 
@@ -38,7 +38,7 @@ class AuthService {
       } catch (_) {}
       const webOptions = [
         'https://skripsi-production-ce547be8.up.railway.app/api',
-        'https://slow-halifax-ddr-parties.trycloudflare.com/api',
+        'https://poem-pierre-get-lone.trycloudflare.com/api',
         'http://localhost:8000/api',
         'http://127.0.0.1:8000/api',
       ];
@@ -50,16 +50,17 @@ class AuthService {
 
     if (Platform.isAndroid) {
       // Prioritas Android:
-      // 1. Railway Cloud 24 Jam Permanen (tanpa perlu laptop)
-      // 2. 127.0.0.1 (USB adb reverse via kabel Tipe-C)
-      // 3. Cloudflare Tunnel URL aktif
-      // 4. IP Wi-Fi lokal
+      // 1. 127.0.0.1 (USB adb reverse via kabel Tipe-C lokal laptop)
+      // 2. IP Wi-Fi lokal laptop (192.168.100.13)
+      // 3. Android Emulator host (10.0.2.2)
+      // 4. Railway Cloud (cadangan jika laptop mati)
+      // 5. Cloudflare Tunnel URL aktif
       const androidOptions = [
-        'https://skripsi-production-ce547be8.up.railway.app/api',
         'http://127.0.0.1:8000/api',
-        'https://slow-halifax-ddr-parties.trycloudflare.com/api',
         'http://192.168.100.13:8000/api',
         'http://10.0.2.2:8000/api',
+        'https://skripsi-production-ce547be8.up.railway.app/api',
+        'https://poem-pierre-get-lone.trycloudflare.com/api',
       ];
       for (final opt in androidOptions) {
         if (!list.contains(opt)) list.add(opt);
@@ -389,8 +390,8 @@ class AuthService {
     }
 
     try {
-      final url = Uri.parse('$baseUrl/change-password');
-      final response = await http.post(
+      Uri url = Uri.parse('$baseUrl/change-password');
+      http.Response response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -403,6 +404,24 @@ class AuthService {
           'password_confirmation': confirmPassword,
         }),
       ).timeout(const Duration(seconds: 10));
+
+      // Fallback ke endpoint alternatif jika 404
+      if (response.statusCode == 404) {
+        url = Uri.parse('$baseUrl/auth/change-password');
+        response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'current_password': currentPassword,
+            'password': newPassword,
+            'password_confirmation': confirmPassword,
+          }),
+        ).timeout(const Duration(seconds: 10));
+      }
 
       final data = jsonDecode(response.body);
 

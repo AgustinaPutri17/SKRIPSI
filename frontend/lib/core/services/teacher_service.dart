@@ -376,4 +376,86 @@ class TeacherService {
       };
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PEMANTAUAN PROJEK SISWA OLEH GURU PEMBIMBING (READ-ONLY)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /// GET /api/teacher/projects
+  /// Mengambil daftar projek siswa bimbingan beserta status & review DUDI
+  static Future<List<Map<String, dynamic>>> getProjects() async {
+    final url = Uri.parse('${AuthService.baseUrl}/teacher/projects');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final list = data['data'] as List<dynamic>?;
+          if (list != null) {
+            return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// GET /api/teacher/projects/{id}
+  /// Mengambil rincian pengajuan projek siswa tertentu
+  static Future<Map<String, dynamic>?> getProjectDetail(int id) async {
+    final url = Uri.parse('${AuthService.baseUrl}/teacher/projects/$id');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data['data'] as Map<String, dynamic>?;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// POST /api/teacher/projects/{id}/review
+  /// Guru pembimbing mengirimkan catatan bimbingan atau masukan pada projek siswa
+  static Future<Map<String, dynamic>> addProjectNote({
+    required int projectId,
+    required String note,
+    String decision = 'noted',
+  }) async {
+    final url = Uri.parse('${AuthService.baseUrl}/teacher/projects/$projectId/review');
+    try {
+      final headers = await _getHeaders();
+      headers['Content-Type'] = 'application/json';
+      final response = await http
+          .post(
+            url,
+            headers: headers,
+            body: jsonEncode({
+              'note': note,
+              'decision': decision,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Catatan bimbingan projek berhasil dikirim ke siswa.',
+          'data': data['data'],
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Gagal mengirim catatan bimbingan.',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
+    }
+  }
 }

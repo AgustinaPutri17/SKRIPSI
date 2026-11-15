@@ -9,6 +9,7 @@ import '../common/ganti_password_screen.dart';
 import 'dudi_lokasi_screen.dart';
 import 'dudi_logbook_detail_screen.dart';
 import 'dudi_penilaian_screen.dart';
+import 'dudi_projek_detail_screen.dart';
 
 /// ==============================================================================
 /// HALAMAN UTAMA PEMBIMBING DUDI (SMART PKL)
@@ -47,15 +48,18 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   // ── Data States ──
   bool _isLoadingStudents = false;
   bool _isLoadingLogbooks = false;
+  bool _isLoadingProjects = false;
 
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _currentUser;
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _logbooks = [];
+  List<Map<String, dynamic>> _projects = [];
   List<Map<String, dynamic>> _locations = [];
   final Map<String, double> _studentScores = {};
 
-  String _selectedLogbookFilter = 'submitted'; // 'all', 'submitted', 'approved', 'rejected'
+  String _selectedLogbookFilter = 'all'; // 'all', 'submitted', 'approved', 'rejected'
+  String _selectedProjectFilter = 'all'; // 'all', 'pending', 'approved', 'revision'
 
   @override
   void initState() {
@@ -72,7 +76,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     if (safeIndex == 0) _loadDashboard();
     if (safeIndex == 1) _loadStudents();
     if (safeIndex == 2) _loadLogbooks();
-    if (safeIndex == 3) _loadLocations();
+    if (safeIndex == 3) _loadProjects();
   }
 
   Future<void> _loadAllData() async {
@@ -82,6 +86,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
       _loadDashboard(),
       _loadStudents(),
       _loadLogbooks(),
+      _loadProjects(),
       _loadLocations(),
     ]);
   }
@@ -134,13 +139,40 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     }
   }
 
+  Future<void> _loadProjects() async {
+    setState(() => _isLoadingProjects = true);
+    try {
+      final list = await SupervisorService.getProjects();
+      if (mounted) {
+        setState(() {
+          _projects = list;
+          _isLoadingProjects = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingProjects = false);
+    }
+  }
+
+  void _openLokasiSetting() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DudiLokasiScreen(
+          initialLocation: _locations.isNotEmpty ? _locations.first : null,
+          onLocationSaved: () => _loadLocations(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildBerandaTab(),
       _buildSiswaTab(),
       _buildLogbookTab(),
-      _buildLokasiTab(),
+      _buildProjekTab(),
       _buildProfilTab(),
     ];
 
@@ -204,9 +236,13 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.location_on_rounded, size: 22),
+                child: Icon(Icons.assignment_outlined, size: 22),
               ),
-              label: 'Lokasi PKL',
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.assignment_rounded, size: 22),
+              ),
+              label: 'Projek',
             ),
             BottomNavigationBarItem(
               icon: Padding(
@@ -384,10 +420,10 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                           ),
                           const SizedBox(width: 12),
                           _buildSummaryStat(
-                            'Radius Presensi',
-                            radius,
-                            'Geofence Aktif',
-                            Icons.location_on_rounded,
+                            'Projek Siswa',
+                            _projects.isNotEmpty ? '${_projects.length}' : '0',
+                            'Pengajuan',
+                            Icons.assignment_rounded,
                             const Color(0xFF7C3AED),
                             const Color(0xFFF3E8FF),
                             onTap: () => _onTabTapped(3),
@@ -397,7 +433,10 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                       const SizedBox(height: 20),
 
                       // Banner Setup Titik Lokasi
-                      Container(
+                      InkWell(
+                        onTap: _openLokasiSetting,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
@@ -439,7 +478,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Atur koordinat GPS kantor & radius presensi siswa.',
+                                    'Radius saat ini: $radius • Atur koordinat GPS kantor.',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: Colors.white.withValues(alpha: 0.9),
@@ -449,7 +488,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: () => _onTabTapped(3),
+                              onPressed: _openLokasiSetting,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
                                 foregroundColor: const Color(0xFF2563EB),
@@ -463,6 +502,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                           ],
                         ),
                       ),
+                    ),
                       const SizedBox(height: 20),
 
                       // Logbook Verification Queue Header
@@ -545,13 +585,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     );
   }
 
-  String _getGradeLabel(double score) {
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
-    return 'E';
-  }
+
 
 
 
@@ -625,93 +659,98 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
           const SizedBox(height: 14),
 
           // 2. Baris Nilai PKL & Tombol "Beri Nilai PKL" (Kotak presensi & logbook dihilangkan)
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: currentScore != null ? const Color(0xFFF5F3FF) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: currentScore != null ? const Color(0xFFDDD6FE) : const Color(0xFFE2E8F0),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: currentScore != null ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: currentScore != null ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.stars_rounded,
+                      size: 20,
+                      color: currentScore != null ? const Color(0xFF2563EB) : AppColors.textMuted,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.stars_rounded,
-                        size: 20,
-                        color: currentScore != null ? const Color(0xFF7C3AED) : AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Nilai PKL (DU/DI)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: currentScore != null ? const Color(0xFF6D28D9) : AppColors.textSecondary,
-                              ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nilai PKL (DU/DI)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: currentScore != null ? const Color(0xFF2563EB) : AppColors.textSecondary,
                             ),
-                            const SizedBox(height: 1),
-                            Text(
-                              currentScore != null
-                                  ? '${currentScore.toStringAsFixed(0)} (${_getGradeLabel(currentScore)})'
-                                  : 'Belum Dinilai',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: currentScore != null ? const Color(0xFF5B21B6) : AppColors.textMuted,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            currentScore != null
+                                ? (currentScore % 1 == 0
+                                    ? currentScore.toInt().toString()
+                                    : currentScore.toStringAsFixed(1))
+                                : 'Belum Dinilai',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: currentScore != null ? const Color(0xFF1D4ED8) : AppColors.textMuted,
                             ),
-                          ],
-                        ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DudiPenilaianScreen(
-                        student: student,
-                        companyName: _locations.isNotEmpty ? _locations.first['name'] : null,
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DudiPenilaianScreen(
+                          student: student,
+                          companyName: _locations.isNotEmpty ? _locations.first['name'] : null,
+                        ),
                       ),
+                    ).then((val) {
+                      if (val != null && val is double) {
+                        setState(() {
+                          _studentScores[studentId] = val;
+                        });
+                      }
+                      _loadStudents();
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ).then((val) {
-                    if (val != null && val is double) {
-                      setState(() {
-                        _studentScores[studentId] = val;
-                      });
-                    }
-                    _loadStudents();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: currentScore != null ? const Color(0xFF4F46E5) : const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                icon: Icon(
-                  currentScore != null ? Icons.edit_note_rounded : Icons.add_task_rounded,
-                  size: 18,
-                ),
-                label: Text(
-                  currentScore != null ? 'Ubah Nilai' : 'Beri Nilai PKL',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  icon: Icon(
+                    currentScore != null ? Icons.edit_note_rounded : Icons.rate_review_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    currentScore != null ? 'Ubah Nilai PKL' : 'Beri Nilai PKL',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],
@@ -734,24 +773,6 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
               title: 'Verifikasi Logbook',
               onProfileTap: () => _onTabTapped(4),
             ),
-            // Filter Pills (Semua, Menunggu, Disetujui, Ditolak)
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildFilterChip('submitted', 'Menunggu'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('approved', 'Disetujui'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('rejected', 'Perlu Revisi'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('all', 'Semua Status'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadLogbooks,
@@ -760,7 +781,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                     : _logbooks.isEmpty
                         ? ListView(
                             children: [
-                              _buildEmptyState('Tidak ada logbook dengan filter status ini.'),
+                              _buildEmptyState('Belum ada logbook siswa yang tercatat.'),
                             ],
                           )
                         : ListView.separated(
@@ -775,36 +796,6 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String value, String label) {
-    final isSelected = _selectedLogbookFilter == value;
-    return Center(
-      child: GestureDetector(
-        onTap: () {
-          setState(() => _selectedLogbookFilter = value);
-          _loadLogbooks();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2563EB) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF2563EB) : AppColors.cardBorder,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
-            ),
-          ),
         ),
       ),
     );
@@ -960,13 +951,326 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   }
 
   // ============================================================================
-  // 7.2 MANAJEMEN LOKASI PKL TAB
+  // 7.4 VERIFIKASI PROJEK SISWA TAB (Halaman Terpisah)
   // ============================================================================
-  Widget _buildLokasiTab() {
-    return DudiLokasiScreen(
-      initialLocation: _locations.isNotEmpty ? _locations.first : null,
-      onLocationSaved: () => _loadLocations(),
-      onProfileTap: () => _onTabTapped(4),
+  Widget _buildProjekTab() {
+    // Saring hanya projek riil yang sudah diajukan oleh siswa
+    final filtered = _projects.where((proj) {
+      final status = (proj['status'] ?? 'pending').toString().toLowerCase();
+      if (_selectedProjectFilter == 'all') return true;
+      if (_selectedProjectFilter == 'pending') {
+        return status == 'pending' || status == 'submitted';
+      }
+      if (_selectedProjectFilter == 'approved') {
+        return status == 'approved';
+      }
+      if (_selectedProjectFilter == 'revision') {
+        return status == 'revision';
+      }
+      return true;
+    }).toList();
+
+    final pendingCount = _projects.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'pending' || (p['status'] ?? '').toString().toLowerCase() == 'submitted').length;
+    final approvedCount = _projects.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'approved').length;
+    final revisionCount = _projects.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'revision').length;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            SmartPklHeader(
+              title: 'Projek',
+              onProfileTap: () => _onTabTapped(4),
+            ),
+
+            // Filter Tabs (Semua, Menunggu, Disetujui, Perlu Revisi)
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _buildProjectFilterChip('all', 'Semua (${_projects.length})'),
+                  const SizedBox(width: 8),
+                  _buildProjectFilterChip('pending', 'Menunggu ($pendingCount)'),
+                  const SizedBox(width: 8),
+                  _buildProjectFilterChip('approved', 'Disetujui ($approvedCount)'),
+                  const SizedBox(width: 8),
+                  _buildProjectFilterChip('revision', 'Perlu Revisi ($revisionCount)'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await _loadProjects();
+                  await _loadStudents();
+                },
+                child: _isLoadingProjects
+                    ? const Center(child: CircularProgressIndicator())
+                    : filtered.isEmpty
+                        ? ListView(
+                            children: [
+                              _buildEmptyState('Tidak ada projek siswa pada kategori ini.'),
+                            ],
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              return _buildProjectCardItem(filtered[index]);
+                            },
+                          ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProjectFilterChip(String value, String label) {
+    final isSelected = _selectedProjectFilter == value;
+    return Center(
+      child: GestureDetector(
+        onTap: () {
+          setState(() => _selectedProjectFilter = value);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              color: isSelected ? Colors.white : const Color(0xFF64748B),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProjectCardItem(Map<String, dynamic> proj) {
+    final student = proj['student'] as Map<String, dynamic>? ?? {};
+    final status = (proj['status'] ?? 'pending').toString().toLowerCase();
+
+    final name = student['name']?.toString() ?? 'Siswa PKL';
+    final sClass = student['class']?.toString() ?? 'XII RPL';
+    final major = student['major']?.toString() ?? 'Rekayasa Perangkat Lunak';
+    final initials = name.isNotEmpty
+        ? name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join('').toUpperCase()
+        : 'SW';
+
+    final title = proj['title']?.toString() ?? 'Projek Siswa';
+    final plan = proj['plan']?.toString() ?? '';
+    final result = proj['result']?.toString() ?? '';
+    final docName = proj['document_name']?.toString();
+    final docSize = proj['document_size'] as int? ?? 0;
+
+    Color badgeColor;
+    Color badgeBg;
+    IconData badgeIcon;
+    String badgeLabel;
+
+    if (status == 'approved') {
+      badgeColor = const Color(0xFF16A34A);
+      badgeBg = const Color(0xFFDCFCE7);
+      badgeIcon = Icons.check_circle_rounded;
+      badgeLabel = 'Disetujui DU/DI';
+    } else if (status == 'revision') {
+      badgeColor = const Color(0xFFDC2626);
+      badgeBg = const Color(0xFFFEE2E2);
+      badgeIcon = Icons.warning_amber_rounded;
+      badgeLabel = 'Perlu Revisi';
+    } else {
+      badgeColor = const Color(0xFFD97706);
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeIcon = Icons.hourglass_top_rounded;
+      badgeLabel = 'Menunggu Verifikasi';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Avatar Siswa, Nama & Status Badge
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFEFF6FF),
+                child: Text(
+                  initials,
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$sClass • $major',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(badgeIcon, size: 12, color: badgeColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      badgeLabel,
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: badgeColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 12),
+
+          // Detail Projek
+          Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+          ),
+          if (plan.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Perencanaan: $plan',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          if (result.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              'Hasil Kerja: $result',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          if (docName != null && docName.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      docName,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    docSize > 0 ? '${(docSize / (1024 * 1024)).toStringAsFixed(1)} MB' : 'PDF',
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 14),
+
+          // Tombol Aksi Verifikasi / Detail
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DudiProjekDetailScreen(
+                      studentData: student,
+                      projectId: proj['id'] as int?,
+                    ),
+                  ),
+                ).then((_) {
+                  _loadProjects();
+                  _loadStudents();
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.assignment_turned_in_rounded, size: 16),
+              label: const Text(
+                'Periksa & Berikan Catatan Projek',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1120,9 +1424,9 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // ── Item 6: KELOLA GEOFENCING KANTOR ──
+                    // ── Item 6: PENENTUAN LOKASI PKL ──
                     InkWell(
-                      onTap: () => _onTabTapped(3),
+                      onTap: _openLokasiSetting,
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -1139,7 +1443,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.edit_location_alt_rounded, size: 20, color: Color(0xFF2563EB)),
+                              child: const Icon(Icons.location_on_rounded, size: 20, color: Color(0xFF2563EB)),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -1147,7 +1451,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: const [
                                   Text(
-                                    'LOKASI PRESENSI',
+                                    'PENGATURAN LOKASI PKL',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
@@ -1157,7 +1461,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                                   ),
                                   SizedBox(height: 2),
                                   Text(
-                                    'Kelola Titik Geofencing Kantor',
+                                    'Penentuan Titik Lokasi & Radius Geofence',
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,

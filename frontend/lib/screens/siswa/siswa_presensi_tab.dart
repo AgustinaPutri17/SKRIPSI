@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/student_service.dart';
@@ -426,13 +427,45 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
     }
   }
 
-  // ── Surat Dokter Handler (Pengajuan Izin) ──────────────────────────────────
-  Future<void> _pickSuratDokter() async {
+  // ── Surat Dokter / Dokumen Bukti Handler (Pengajuan Izin) ───────────────────
+  bool _isDokumenPdf(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.pdf') || lower.endsWith('.doc') || lower.endsWith('.docx');
+  }
+
+  Future<void> _pickDokumenFile() async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (files.isNotEmpty && mounted) {
+        final f = files.first;
+        final path = f.path;
+        if (path != null) {
+          final fileSize = f.lengthSync() ?? (await f.length()) ?? 0;
+          final sizeMb = (fileSize / (1024 * 1024)).toStringAsFixed(1);
+          final xfile = XFile(path, name: f.name);
+          setState(() {
+            _suratDokterFile = xfile;
+            _suratDokterFileName = f.name;
+            _suratDokterFileSize = '$sizeMb MB';
+            _hasSuratDokter = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking document: $e');
+    }
+  }
+
+  Future<void> _pickImageFile(ImageSource source) async {
     try {
       final XFile? doc = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1280,
-        maxHeight: 1280,
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1600,
         imageQuality: 85,
       );
 
@@ -446,7 +479,86 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
           _hasSuratDokter = true;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
+  }
+
+  Future<void> _pickSuratDokter() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Pilih Sumber Bukti Izin / Sakit',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Lampirkan berkas dokumen atau foto dari galeri HP.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.insert_drive_file_rounded, color: Color(0xFF2563EB), size: 22),
+                ),
+                title: const Text('Dokumen Berkas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text('Pilih berkas dokumen dari penyimpanan perangkat HP', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickDokumenFile();
+                },
+              ),
+              const Divider(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Color(0xFF2563EB), size: 22),
+                ),
+                title: const Text('Galeri Foto', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text('Pilih foto surat keterangan dari galeri gambar', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImageFile(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // ── Rumus Haversine (Sesuai App\Services\GeoService di Backend Laravel) ────
@@ -742,6 +854,32 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
       return;
     }
 
+    // Validasi Wajib Bukti Dokumen/Foto Surat Izin atau Sakit
+    if (_suratDokterFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _selectedJenisPengajuan == 0
+                      ? 'Bukti surat dokter / surat keterangan sakit wajib dilampirkan (bisa berupa dokumen PDF atau foto).'
+                      : 'Bukti surat izin / dokumen pendukung wajib dilampirkan (bisa berupa dokumen PDF atau foto).',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final res = await StudentService.submitLeaveRequest(
@@ -813,10 +951,19 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             ),
 
             Expanded(
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async {
+                  await _loadPlacementAndDashboard();
+                  await _requestAndGetRealLocation(isManualRefresh: true);
+                  if (_activeSubTab == 2) {
+                    await _fetchMyLeaveRequests();
+                  }
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Segmented Tabs: Masuk | Pulang | Sakit/Izin
@@ -878,6 +1025,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),
@@ -895,6 +1043,8 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
           });
           if (index == 2) {
             _fetchMyLeaveRequests();
+          } else {
+            _loadPlacementAndDashboard();
           }
         },
         child: Container(
@@ -1699,13 +1849,39 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             color: const Color(0xFF16A34A),
             onPressed: () {},
           )
-        else if (!isMasuk && !hasCheckedIn)
+        else if (!isMasuk && !hasCheckedIn) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Anda belum tercatat melakukan presensi masuk hari ini. Jika baru saja check-in, ketuk Muat Ulang status.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _loadPlacementAndDashboard(),
+                  child: const Text('Refresh', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                ),
+              ],
+            ),
+          ),
           CustomButton(
             text: 'Presensi Masuk Diperlukan Terlebih Dahulu',
-            icon: Icons.lock_outline_rounded,
+            icon: Icons.refresh_rounded,
             color: const Color(0xFF94A3B8),
-            onPressed: () {},
-          )
+            onPressed: () => _loadPlacementAndDashboard(),
+          ),
+        ]
         else if (isBeforePulang)
           CustomButton(
             text: 'Belum Waktunya Pulang (Mulai $_checkOutTimeString WIB)',
@@ -1996,13 +2172,21 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
         ),
         const SizedBox(height: 16),
 
-        // Bukti Dokumen Pendukung (Surat Dokter)
+        // Bukti Dokumen Pendukung (Surat Dokter / Dokumen Izin)
         Row(
-          children: const [
-            Text('Bukti Dokumen Pendukung ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            Text('(Surat Dokter)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
-            Spacer(),
-            Text('Maks. 5 MB', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          children: [
+            Text(
+              _selectedJenisPengajuan == 0
+                  ? 'Bukti Surat Dokter / Medis '
+                  : 'Bukti Dokumen / Surat Izin ',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            const Text(
+              '* (Wajib)',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFEF4444)),
+            ),
+            const Spacer(),
+            const Text('Maks. 5 MB', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
           ],
         ),
         const SizedBox(height: 8),
@@ -2018,21 +2202,28 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _isDokumenPdf(_suratDokterFileName) ? const Color(0xFFFEE2E2) : Colors.white,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
+                    border: Border.all(
+                      color: _isDokumenPdf(_suratDokterFileName) ? const Color(0xFFFECACA) : const Color(0xFFCBD5E1),
+                      width: 1,
+                    ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: _suratDokterFile != null
-                        ? (kIsWeb
-                            ? Image.network(_suratDokterFile!.path, fit: BoxFit.cover)
-                            : Image.file(File(_suratDokterFile!.path), fit: BoxFit.cover))
+                        ? (_isDokumenPdf(_suratDokterFileName)
+                            ? const Center(
+                                child: Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626), size: 24),
+                              )
+                            : (kIsWeb
+                                ? Image.network(_suratDokterFile!.path, fit: BoxFit.cover)
+                                : Image.file(File(_suratDokterFile!.path), fit: BoxFit.cover)))
                         : const Center(
-                            child: Icon(Icons.image_outlined, color: Color(0xFFEF4444), size: 20),
+                            child: Icon(Icons.description_outlined, color: Color(0xFF2563EB), size: 20),
                           ),
                   ),
                 ),
@@ -2048,7 +2239,27 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Text('$_suratDokterFileSize • Terlampir', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: _isDokumenPdf(_suratDokterFileName) ? const Color(0xFFFEE2E2) : const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _isDokumenPdf(_suratDokterFileName) ? 'DOKUMEN' : 'FOTO',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: _isDokumenPdf(_suratDokterFileName) ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text('$_suratDokterFileSize • Terlampir', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -2057,6 +2268,8 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
                     setState(() {
                       _hasSuratDokter = false;
                       _suratDokterFile = null;
+                      _suratDokterFileName = '';
+                      _suratDokterFileSize = '';
                     });
                   },
                   child: Container(
@@ -2073,7 +2286,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
           InkWell(
             onTap: _pickSuratDokter,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
@@ -2082,11 +2295,11 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 18),
+                  Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 20),
                   SizedBox(width: 8),
                   Text(
-                    'Pilih Berkas Surat Dokter (Foto / Galeri)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                    'Pilih Berkas Bukti (Dokumen / Galeri Foto)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
                   ),
                 ],
               ),

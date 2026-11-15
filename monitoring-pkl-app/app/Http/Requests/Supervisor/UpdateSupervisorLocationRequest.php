@@ -23,6 +23,9 @@ class UpdateSupervisorLocationRequest extends FormRequest
             'check_in_time' => ['sometimes', 'nullable'],
             'check_out_time' => ['sometimes', 'nullable'],
             'check_out_end' => ['sometimes', 'nullable'],
+            'work_days' => ['sometimes', 'nullable', 'string', 'in:monday_friday,monday_saturday'],
+            'start_date' => ['sometimes', 'nullable', 'date'],
+            'end_date' => ['sometimes', 'nullable', 'date'],
         ];
     }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/teacher_service.dart';
 import '../../widgets/smart_pkl_header.dart';
 import '../../widgets/status_pill.dart';
+import 'guru_projek_detail_screen.dart';
 
 class GuruSiswaTab extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -267,6 +268,14 @@ class _GuruSiswaTabState extends State<GuruSiswaTab> {
                               status: isAktif ? 'Aktif PKL' : 'Belum Aktif',
                               statusStyle: isAktif ? PillStyle.success : PillStyle.warning,
                               avatarColor: _getAvatarColor(index),
+                              onTapProjek: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => GuruProjekDetailScreen(studentData: student),
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -325,6 +334,7 @@ class _GuruSiswaTabState extends State<GuruSiswaTab> {
     required String status,
     required PillStyle statusStyle,
     required Color avatarColor,
+    VoidCallback? onTapProjek,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -467,6 +477,25 @@ class _GuruSiswaTabState extends State<GuruSiswaTab> {
               ],
             ),
           ),
+          if (onTapProjek != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onTapProjek,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF2563EB)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.assignment_turned_in_rounded, size: 16, color: Color(0xFF2563EB)),
+                label: const Text(
+                  'Lihat Projek & Verifikasi DU/DI',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

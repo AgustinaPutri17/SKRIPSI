@@ -17,19 +17,25 @@ class DudiPenilaianScreen extends StatefulWidget {
 }
 
 class _SubIndicatorItem {
-  final String code;
+  String code;
   String title;
   double score;
+  late final TextEditingController controller;
 
   _SubIndicatorItem({
     required this.code,
     required this.title,
     this.score = 85.0,
-  });
+  }) { 
+    controller = TextEditingController(text: title);
+  }
+
+  String get effectiveTitle =>
+      controller.text.trim().isNotEmpty ? controller.text.trim() : title.trim();
 
   Map<String, dynamic> toJson() => {
         'code': code,
-        'title': title,
+        'title': effectiveTitle,
         'score': score,
       };
 
@@ -38,6 +44,10 @@ class _SubIndicatorItem {
         title: json['title']?.toString() ?? '',
         score: (json['score'] as num?)?.toDouble() ?? 85.0,
       );
+
+  void dispose() {
+    controller.dispose();
+  }
 }
 
 class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
@@ -57,7 +67,7 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
   // 2. Norma, POS & K3LH (2.1 - 2.2)
   late List<_SubIndicatorItem> _k3lhItems;
 
-  // 3. Kompetensi Teknis (3.1 - 3.x)
+  // 3. Kompetensi Teknis (3.1 - 3.x) - Dinamis dimasukkan oleh DUDI
   late List<_SubIndicatorItem> _technicalItems;
 
   // 4. Alur Bisnis (4.1)
@@ -78,7 +88,7 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
       text: 'Peserta didik tertib menggunakan atribut/APD dan konsisten mematuhi POS yang berlaku di tempat kerja.',
     );
     _desc3Controller = TextEditingController(
-      text: 'Peserta didik mampu menerapkan kompetensi teknis kejuruan dengan baik dan dapat menyelesaikan instruksi tugas industri.',
+      text: 'Peserta didik mampu menerapkan kompetensi teknis yang ditugaskan dengan baik.',
     );
     _desc4Controller = TextEditingController(
       text: 'Peserta didik telah mampu memahami alur bisnis pada tempat PKL dan memiliki pemahaman alur kerja operasional.',
@@ -101,12 +111,9 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
       _SubIndicatorItem(code: '2.2', title: 'Melaksanakan pekerjaan sesuai Prosedur Operasional Standar (POS)', score: 86.0),
     ];
 
+    // Indikator Teknis (No. 3): Cukup masukkan indikator yang dinilai, dibagi jumlah indikator yang dimasukkan
     _technicalItems = [
-      _SubIndicatorItem(code: '3.1', title: 'Perancangan Sistem & Basis Data (Mockup / ERD)', score: 88.0),
-      _SubIndicatorItem(code: '3.2', title: 'Implementasi & Pemrograman Web / Aplikasi', score: 87.0),
-      _SubIndicatorItem(code: '3.3', title: 'Pengujian, Debugging & Optimasi Kode', score: 85.0),
-      _SubIndicatorItem(code: '3.4', title: 'Penggunaan Alat (Tools) & Framework Industri', score: 86.0),
-      _SubIndicatorItem(code: '3.5', title: 'Dokumentasi Teknis & Pelaporan Proyek', score: 85.0),
+      _SubIndicatorItem(code: '3.1', title: '', score: 85.0),
     ];
 
     _businessItems = [
@@ -121,6 +128,18 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     _desc3Controller.dispose();
     _desc4Controller.dispose();
     _generalNotesController.dispose();
+    for (final item in _softSkills) {
+      item.dispose();
+    }
+    for (final item in _k3lhItems) {
+      item.dispose();
+    }
+    for (final item in _technicalItems) {
+      item.dispose();
+    }
+    for (final item in _businessItems) {
+      item.dispose();
+    }
     super.dispose();
   }
 
@@ -141,28 +160,48 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
           if (comps['indicator_1'] != null) {
             final ind1 = comps['indicator_1'] as Map<String, dynamic>;
             final items = (ind1['items'] as List?)?.map((e) => _SubIndicatorItem.fromJson(Map<String, dynamic>.from(e))).toList();
-            if (items != null && items.isNotEmpty) _softSkills = items;
+            if (items != null && items.isNotEmpty) {
+              for (final old in _softSkills) {
+                old.dispose();
+              }
+              _softSkills = items;
+            }
             if (ind1['description'] != null) _desc1Controller.text = ind1['description'].toString();
           }
 
           if (comps['indicator_2'] != null) {
             final ind2 = comps['indicator_2'] as Map<String, dynamic>;
             final items = (ind2['items'] as List?)?.map((e) => _SubIndicatorItem.fromJson(Map<String, dynamic>.from(e))).toList();
-            if (items != null && items.isNotEmpty) _k3lhItems = items;
+            if (items != null && items.isNotEmpty) {
+              for (final old in _k3lhItems) {
+                old.dispose();
+              }
+              _k3lhItems = items;
+            }
             if (ind2['description'] != null) _desc2Controller.text = ind2['description'].toString();
           }
 
           if (comps['indicator_3'] != null) {
             final ind3 = comps['indicator_3'] as Map<String, dynamic>;
             final items = (ind3['items'] as List?)?.map((e) => _SubIndicatorItem.fromJson(Map<String, dynamic>.from(e))).toList();
-            if (items != null && items.isNotEmpty) _technicalItems = items;
+            if (items != null && items.isNotEmpty) {
+              for (final old in _technicalItems) {
+                old.dispose();
+              }
+              _technicalItems = items;
+            }
             if (ind3['description'] != null) _desc3Controller.text = ind3['description'].toString();
           }
 
           if (comps['indicator_4'] != null) {
             final ind4 = comps['indicator_4'] as Map<String, dynamic>;
             final items = (ind4['items'] as List?)?.map((e) => _SubIndicatorItem.fromJson(Map<String, dynamic>.from(e))).toList();
-            if (items != null && items.isNotEmpty) _businessItems = items;
+            if (items != null && items.isNotEmpty) {
+              for (final old in _businessItems) {
+                old.dispose();
+              }
+              _businessItems = items;
+            }
             if (ind4['description'] != null) _desc4Controller.text = ind4['description'].toString();
           }
         }
@@ -189,10 +228,18 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     return sum / _k3lhItems.length;
   }
 
+  /// Indikator teknis yang diisi / aktif
+  List<_SubIndicatorItem> get _activeTechnicalItems {
+    final filled = _technicalItems.where((item) => item.effectiveTitle.isNotEmpty).toList();
+    return filled.isNotEmpty ? filled : _technicalItems;
+  }
+
+  /// Skor No. 3 = Jumlah skor indikator teknis dibagi jumlah indikator yang dimasukkan
   double get _score3 {
-    if (_technicalItems.isEmpty) return 0.0;
-    final sum = _technicalItems.fold<double>(0.0, (acc, item) => acc + item.score);
-    return sum / _technicalItems.length;
+    final items = _activeTechnicalItems;
+    if (items.isEmpty) return 0.0;
+    final sum = items.fold<double>(0.0, (acc, item) => acc + item.score);
+    return sum / items.length;
   }
 
   double get _score4 {
@@ -228,6 +275,34 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     return const Color(0xFFDC2626);
   }
 
+  void _addTechnicalItem() {
+    setState(() {
+      final nextNum = _technicalItems.length + 1;
+      _technicalItems.add(_SubIndicatorItem(
+        code: '3.$nextNum',
+        title: '',
+        score: 85.0,
+      ));
+    });
+  }
+
+  void _removeTechnicalItem(int index) {
+    if (_technicalItems.length <= 1) {
+      setState(() {
+        _technicalItems[0].controller.clear();
+        _technicalItems[0].title = '';
+      });
+      return;
+    }
+    setState(() {
+      final removed = _technicalItems.removeAt(index);
+      removed.dispose();
+      for (int i = 0; i < _technicalItems.length; i++) {
+        _technicalItems[i].code = '3.${i + 1}';
+      }
+    });
+  }
+
   Future<void> _saveAssessment() async {
     final studentId = widget.student['id'] as int?;
     if (studentId == null) {
@@ -238,6 +313,8 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     }
 
     setState(() => _isSaving = true);
+
+    final validItems = _activeTechnicalItems;
 
     final payload = {
       'formula': 'Skor PKL = (Skor 1 + Skor 2 + Skor 3 + Skor 4) / 4',
@@ -259,6 +336,7 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
       'indicator_3': {
         'title': 'Menerapkan kompetensi teknis yang sudah/baru dipelajari pada dunia kerja',
         'score': double.parse(_score3.toStringAsFixed(2)),
+        'indicators_count': validItems.length,
         'description': _desc3Controller.text.trim(),
         'items': _technicalItems.map((e) => e.toJson()).toList(),
       },
@@ -310,82 +388,6 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     }
   }
 
-  void _showAddTechnicalItemDialog() {
-    final titleController = TextEditingController();
-    double initialVal = 85.0;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDlgState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Tambah Indikator Teknis (No. 3)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Nama Kompetensi Teknis:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: titleController,
-                    decoration: InputDecoration(
-                      hintText: 'Contoh: Konfigurasi Jaringan & Server',
-                      hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Nilai Awal:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      Text(initialVal.toStringAsFixed(0), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
-                    ],
-                  ),
-                  Slider(
-                    value: initialVal,
-                    min: 50,
-                    max: 100,
-                    divisions: 50,
-                    activeColor: const Color(0xFF2563EB),
-                    onChanged: (v) => setDlgState(() => initialVal = v),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Batal'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final t = titleController.text.trim();
-                    if (t.isNotEmpty) {
-                      setState(() {
-                        final nextCode = '3.${_technicalItems.length + 1}';
-                        _technicalItems.add(_SubIndicatorItem(code: nextCode, title: t, score: initialVal));
-                      });
-                      Navigator.pop(ctx);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Tambahkan'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final studentName = widget.student['name']?.toString() ?? 'Siswa PKL';
@@ -431,7 +433,7 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
 
                         // --- Total Skor PKL (Formula card) ---
                         _buildTotalScoreHeroCard(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 14),
 
                         // --- Section 1: Soft Skills ---
                         _buildSectionCard(
@@ -457,17 +459,8 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // --- Section 3: Kompetensi Teknis Kejuruan ---
-                        _buildSectionCard(
-                          number: '3',
-                          title: 'Menerapkan Kompetensi Teknis Kejuruan',
-                          subtitle: 'Kompetensi teknis yang dipelajari di sekolah & dunia industri',
-                          sectionScore: _score3,
-                          items: _technicalItems,
-                          descController: _desc3Controller,
-                          formulaLabel: 'Skor 3 = Jumlah : ${_technicalItems.length}',
-                          onAddItem: _showAddTechnicalItemDialog,
-                        ),
+                        // --- Section 3: Kompetensi Teknis Kejuruan (Dinamis: Cukup Masukkan Indikator) ---
+                        _buildTechnicalSectionCard(),
                         const SizedBox(height: 16),
 
                         // --- Section 4: Alur Bisnis & Wirausaha ---
@@ -572,166 +565,97 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
   }
 
   Widget _buildTotalScoreHeroCard() {
-    final grade = _getGrade(_totalDudiScore);
-    final predikat = _getPredikatText(_totalDudiScore);
-    final gradeColor = _getGradeColor(_totalDudiScore);
-
     return Container(
-      padding: const EdgeInsets.all(18),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const Text(
+                'TOTAL SKOR PKL (DU/DI)',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFBFDBFE),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
                 children: [
-                  const Text(
-                    'TOTAL SKOR PKL (DU/DI)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFBFDBFE),
-                      letterSpacing: 0.8,
+                  Text(
+                    _totalDudiScore.toStringAsFixed(2),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        _totalDudiScore.toStringAsFixed(2),
-                        style: const TextStyle(
-                          fontSize: 38,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -1,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        '/ 100',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF93C5FD), fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                  const SizedBox(width: 5),
+                  const Text(
+                    '/ 100',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF93C5FD),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Grade $grade',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: gradeColor,
-                      ),
-                    ),
-                    Text(
-                      predikat,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey.shade700),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.functions_rounded, color: Color(0xFF93C5FD), size: 16),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Rumus Form. 07: Skor PKL = (Skor 1 + Skor 2 + Skor 3 + Skor 4) : 4',
-                    style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                Icon(Icons.verified_rounded, size: 14, color: Colors.white),
+                SizedBox(width: 5),
+                Text(
+                  'Skor Akhir',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-
-          // 4 Sub-score indicators preview
-          Row(
-            children: [
-              _buildMiniScorePill('No.1 Soft Skills', _score1),
-              const SizedBox(width: 6),
-              _buildMiniScorePill('No.2 K3LH/POS', _score2),
-              const SizedBox(width: 6),
-              _buildMiniScorePill('No.3 Teknis', _score3),
-              const SizedBox(width: 6),
-              _buildMiniScorePill('No.4 Bisnis', _score4),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildMiniScorePill(String label, double val) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 9, color: Color(0xFFDBEAFE), fontWeight: FontWeight.w500),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              val.toStringAsFixed(1),
-              style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  // Section Card Standar (untuk No. 1, 2, 4)
   Widget _buildSectionCard({
     required String number,
     required String title,
@@ -740,7 +664,6 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     required List<_SubIndicatorItem> items,
     required TextEditingController descController,
     required String formulaLabel,
-    VoidCallback? onAddItem,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -828,24 +751,7 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
                   final item = entry.value;
                   return _buildSubIndicatorRow(item, idx, items.length);
                 }),
-                if (onAddItem != null) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: onAddItem,
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Tambah Indikator Teknis'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2563EB),
-                        side: const BorderSide(color: Color(0xFF93C5FD)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
 
                 // Formula info banner
                 Container(
@@ -896,6 +802,7 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
     );
   }
 
+  // Row untuk No. 1, 2, 4 (Teks indikator standar dari instansi)
   Widget _buildSubIndicatorRow(_SubIndicatorItem item, int index, int total) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -930,7 +837,6 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Direct numeric display & tap to edit
               GestureDetector(
                 onTap: () => _showQuickEditScoreDialog(item),
                 child: Container(
@@ -955,16 +861,298 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          // Interactive Slider
           Row(
             children: [
-              const Text('50', style: TextStyle(fontSize: 10, color: Colors.grey)),
+              const Text('0', style: TextStyle(fontSize: 10, color: Colors.grey)),
               Expanded(
                 child: Slider(
-                  value: item.score,
-                  min: 50,
+                  value: item.score.clamp(0.0, 100.0),
+                  min: 0,
                   max: 100,
-                  divisions: 50,
+                  divisions: 100,
+                  activeColor: const Color(0xFF2563EB),
+                  inactiveColor: const Color(0xFFE2E8F0),
+                  onChanged: (val) {
+                    setState(() {
+                      item.score = val;
+                    });
+                  },
+                ),
+              ),
+              const Text('100', style: TextStyle(fontSize: 10, color: Colors.grey)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- SECTION NO. 3 KHUSUS: CUKUP MASUKKAN INDIKATOR TEKNIS & DIBAGI JUMLAH INDIKATOR ---
+  Widget _buildTechnicalSectionCard() {
+    final validItems = _activeTechnicalItems;
+    final count = validItems.length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '3',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Menerapkan Kompetensi Teknis Kejuruan',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Cukup masukkan indikator yang dinilai, nilai dibagi jumlah indikator',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('Skor Indikator', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                    Text(
+                      _score3.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: _getGradeColor(_score3),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Items list
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ..._technicalItems.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final item = entry.value;
+                  return _buildTechnicalIndicatorRow(item, idx, _technicalItems.length);
+                }),
+
+                // Button tambah indikator teknis
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _addTechnicalItem,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text('Tambah Indikator (3.${_technicalItems.length + 1})'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF2563EB),
+                      side: const BorderSide(color: Color(0xFF93C5FD)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Formula info banner (otomatis membagi dengan jumlah indikator yang dimasukkan)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calculate_outlined, size: 16, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          count > 0
+                              ? 'Skor 3 = Jumlah Skor : $count indikator yang dimasukkan'
+                              : 'Masukkan minimal 1 indikator teknis di atas',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Deskripsi / Catatan Indikator 3
+                const Text(
+                  'Deskripsi Ketercapaian / Catatan:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _desc3Controller,
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: InputDecoration(
+                    hintText: 'Tuliskan deskripsi capaian kompetensi teknis siswa...',
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    contentPadding: const EdgeInsets.all(10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Row khusus indikator teknis dengan kolom input teks nama indikator langsung
+  Widget _buildTechnicalIndicatorRow(_SubIndicatorItem item, int index, int total) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  item.code,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: item.controller,
+                  onChanged: (val) {
+                    setState(() {
+                      item.title = val;
+                    });
+                  },
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Tuliskan nama indikator (${item.code})...',
+                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400, fontStyle: FontStyle.italic),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _showQuickEditScoreDialog(item),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        item.score.toStringAsFixed(0),
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF2563EB)),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.edit, size: 12, color: Color(0xFF94A3B8)),
+                    ],
+                  ),
+                ),
+              ),
+              if (total > 1) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  onPressed: () => _removeTechnicalItem(index),
+                  icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                  tooltip: 'Hapus indikator',
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text('0', style: TextStyle(fontSize: 10, color: Colors.grey)),
+              Expanded(
+                child: Slider(
+                  value: item.score.clamp(0.0, 100.0),
+                  min: 0,
+                  max: 100,
+                  divisions: 100,
                   activeColor: const Color(0xFF2563EB),
                   inactiveColor: const Color(0xFFE2E8F0),
                   onChanged: (val) {
@@ -994,7 +1182,10 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.title, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(
+                item.effectiveTitle.isNotEmpty ? item.effectiveTitle : 'Indikator ${item.code}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: c,
@@ -1046,9 +1237,11 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
             children: [
               Icon(Icons.notes_rounded, size: 20, color: Color(0xFF2563EB)),
               SizedBox(width: 8),
-              Text(
-                'Catatan & Evaluasi Pembimbing Industri (DU/DI)',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              Expanded(
+                child: Text(
+                  'Catatan & Evaluasi Pembimbing Industri (DU/DI)',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                ),
               ),
             ],
           ),
@@ -1106,25 +1299,9 @@ class _DudiPenilaianScreenState extends State<DudiPenilaianScreen> {
                   'Skor Akhir DU/DI:',
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      _totalDudiScore.toStringAsFixed(2),
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF2563EB)),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Grade ${_getGrade(_totalDudiScore)}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
-                      ),
-                    ),
-                  ],
+                Text(
+                  _totalDudiScore.toStringAsFixed(2),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF2563EB)),
                 ),
               ],
             ),

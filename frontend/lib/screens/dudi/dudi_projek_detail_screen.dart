@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/supervisor_service.dart';
 import '../../widgets/smart_pkl_header.dart';
+import '../../widgets/status_pill.dart';
+import '../common/pdf_viewer_screen.dart';
 
 /// ==============================================================================
-/// VERIFIKASI PROJEK SISWA
-/// Sesuai Mockup Gambar Ketiga (Verifikasi Projek Siswa):
-/// - Header: SMART PKL Projek + Avatar
-/// - Card Siswa: MF (M. Farel Ardiansyah) • SMK Negeri 1 Cimahi • Rekayasa Perangkat Lunak
-/// - Tanggal (24 Oktober 2024)
-/// - Nama (Nama dan deskripsi projek siswa)
-/// - Perencanaan Kegiatan (Dokumen perancangan)
-/// - Pelaksanaan Kegiatan / Hasil Karya (Proses kerja dan foto hasil siswa)
-/// - Catatan Instruktur (Tulis masukan atau hal yang perlu diperbaiki)
-/// - Tombol Aksi [✕ Tolak] dan [✓ Setujui]
+/// VERIFIKASI PROJEK SISWA OLEH DU/DI
+/// Terhubung langsung dengan backend API:
+/// - GET /api/supervisor/projects/{id}
+/// - POST /api/supervisor/projects/{id}/verify
 /// ==============================================================================
 class DudiProjekDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? studentData;
+  final int? projectId;
 
   const DudiProjekDetailScreen({
     super.key,
     this.studentData,
+    this.projectId,
   });
 
   @override
@@ -28,7 +27,17 @@ class DudiProjekDetailScreen extends StatefulWidget {
 
 class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
+  bool _isLoading = true;
   bool _isSubmitting = false;
+
+  Map<String, dynamic>? _project;
+  List<Map<String, dynamic>> _reviews = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProjectData();
+  }
 
   @override
   void dispose() {
@@ -36,44 +45,158 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
     super.dispose();
   }
 
-  void _handleAction(bool isApprove) {
-    if (!isApprove && _commentController.text.trim().isEmpty) {
+  Future<void> _loadProjectData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      int? targetId = widget.projectId;
+
+      // Jika projectId belum diberikan langsung, cari dari daftar projek siswa
+      if (targetId == null) {
+        final projects = await SupervisorService.getProjects();
+        final studentId = widget.studentData?['id']?.toString() ?? widget.studentData?['student_id']?.toString();
+
+        if (studentId != null) {
+          final match = projects.firstWhere(
+            (p) =>
+                p['student']?['id']?.toString() == studentId ||
+                p['placement_id']?.toString() == widget.studentData?['placement_id']?.toString(),
+            orElse: () => {},
+          );
+          if (match.isNotEmpty) {
+            targetId = match['id'] as int?;
+          }
+        }
+      }
+
+      if (targetId != null) {
+        final detail = await SupervisorService.getProjectDetail(targetId);
+        if (detail != null && mounted) {
+          setState(() {
+            _project = detail;
+            final rawReviews = detail['reviews'] as List<dynamic>? ?? [];
+            _reviews = rawReviews.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          });
+        }
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleAction(bool isApprove) async {
+    final note = _commentController.text.trim();
+    if (!isApprove && note.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Catatan Instruktur wajib diisi saat menolak/meminta revisi projek.'),
+          content: Text('Catatan Instruktur wajib diisi saat meminta revisi projek.'),
           backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final projectId = _project?['id'] ?? widget.projectId;
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data projek siswa belum tersedia untuk diverifikasi.'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
-    Future.delayed(const Duration(milliseconds: 600), () {
+
+    try {
+      final res = await SupervisorService.verifyProject(
+        id: projectId as int,
+        decision: isApprove ? 'approved' : 'revision',
+        note: note,
+      );
+
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isApprove
-                ? 'Projek siswa berhasil disetujui (ACC).'
-                : 'Projek siswa ditolak dengan catatan evaluasi.',
+
+      if (res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isApprove
+                  ? 'Projek siswa berhasil disetujui (ACC).'
+                  : 'Projek siswa dikembalikan untuk revisi beserta catatan evaluasi.',
+            ),
+            backgroundColor: isApprove ? const Color(0xFF16A34A) : const Color(0xFFEA580C),
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: isApprove ? const Color(0xFF16A34A) : const Color(0xFFEA580C),
-        ),
-      );
-      Navigator.of(context).maybePop(true);
-    });
+        );
+        Navigator.of(context).maybePop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? 'Gagal memproses verifikasi projek.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildStatusPill(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return const StatusPill(text: 'Disetujui', style: PillStyle.success);
+      case 'revision':
+        return const StatusPill(text: 'Perlu Revisi', style: PillStyle.error);
+      case 'pending':
+      case 'submitted':
+        return const StatusPill(text: 'Menunggu', style: PillStyle.warning);
+      default:
+        return const StatusPill(text: 'Draf', style: PillStyle.neutral);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final studentName = widget.studentData?['name']?.toString() ?? 'M. Farel Ardiansyah';
-    final studentClass = widget.studentData?['class']?.toString() ?? 'SMK Negeri 1 Cimahi';
-    final studentMajor = widget.studentData?['major']?.toString() ?? 'Rekayasa Perangkat Lunak';
+    final studentName = _project?['student']?['name']?.toString() ??
+        widget.studentData?['name']?.toString() ??
+        'Nama Siswa';
+    final studentClass = _project?['student']?['class']?.toString() ??
+        widget.studentData?['class']?.toString() ??
+        widget.studentData?['school']?.toString() ??
+        'SMK';
+    final studentMajor = _project?['student']?['major']?.toString() ??
+        widget.studentData?['major']?.toString() ??
+        '';
 
     final initials = studentName.isNotEmpty
         ? studentName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
-        : 'MF';
+        : 'SW';
+
+    final projectTitle = _project?['title']?.toString() ?? '';
+    final projectDesc = _project?['description']?.toString() ?? '';
+    final projectPlan = _project?['plan']?.toString() ?? '';
+    final projectResult = _project?['result']?.toString() ?? '';
+    final docName = _project?['document_name']?.toString();
+    final docSize = _project?['document_size'] as int? ?? 0;
+    final status = _project?['status']?.toString() ?? 'pending';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -86,13 +209,19 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
               showBackButton: true,
               onBackTap: () => Navigator.maybePop(context),
             ),
+            if (_isLoading)
+              const LinearProgressIndicator(
+                minHeight: 2,
+                color: Color(0xFF2563EB),
+                backgroundColor: Color(0xFFEFF6FF),
+              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sub Header Titling Sesuai Mockup
+                    // Sub Header
                     const Text(
                       'Verifikasi Projek Siswa',
                       style: TextStyle(
@@ -101,22 +230,7 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Row(
-                      children: [
-                        Icon(Icons.business_rounded, size: 14, color: AppColors.primary),
-                        SizedBox(width: 6),
-                        Text(
-                          'PT Solusi Teknologi Mandiri',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
                     // Siswa Profile Card (Top Blue Accent Line)
                     Container(
@@ -147,180 +261,421 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                           ),
                           Padding(
                             padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 22,
-                                      backgroundColor: const Color(0xFFEFF6FF),
-                                      child: Text(
-                                        initials,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
+                                CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: const Color(0xFFEFF6FF),
+                                  child: Text(
+                                    initials,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            studentName,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '$studentClass\n$studentMajor',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.textSecondary,
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  '24 Oktober 2024',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary,
                                   ),
                                 ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        studentName,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        studentMajor.isNotEmpty ? '$studentClass • $studentMajor' : studentClass,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                _buildStatusPill(status),
                               ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
-                    // Section 1: Nama Projek
-                    _buildSectionCard(
-                      'Nama',
-                      'Aplikasi Monitoring PKL SMK Berbasis Flutter & Laravel REST API.\nDilengkapi fitur presensi GPS Geofencing radius dan verifikasi jurnal berkala.',
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Section 2: Perencanaan Kegiatan
-                    _buildSectionCard(
-                      'Perencanaan Kegiatan',
-                      'Dokumen analisis kebutuhan sistem, rancangan ERD database MySQL, wireframe mockup UI, serta timeline pengerjaan sprint 1 hingga sprint 4.',
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Section 3: Pelaksanaan Kegiatan / Hasil Karya
-                    _buildSectionCard(
-                      'Pelaksanaan Kegiatan / Hasil Karya',
-                      'Selesai mengimplementasikan modul autentikasi JWT multi-role, sinkronisasi geolocation perangkat native, serta endpoint verifikasi logbook DUDI.',
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Section 4: Catatan Instruktur Box
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                    if (_project == null && !_isLoading)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.folder_open_rounded, size: 48, color: Color(0xFF94A3B8)),
+                            SizedBox(height: 12),
+                            Text(
+                              'Siswa Belum Mengajukan Projek',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Data pekerjaan projek magang dan dokumen laporan siswa akan tampil di sini setelah diajukan oleh siswa.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      // Section 1: Nama & Deskripsi Pekerjaan
+                      _buildSectionCard(
+                        '1. Nama & Deskripsi Pekerjaan',
+                        projectDesc.isNotEmpty && projectDesc != projectTitle
+                            ? '$projectTitle\n\n$projectDesc'
+                            : (projectTitle.isNotEmpty ? projectTitle : '-'),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Catatan Instruktur',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFCBD5E1)),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: TextField(
-                              controller: _commentController,
-                              maxLines: 3,
-                              style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                hintText: 'Tulis masukan atau hal yang perlu diperbaiki oleh siswa...',
-                                hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
+                      const SizedBox(height: 12),
 
-                          // Tombol Tolak dan Setujui
-                          Row(
+                      // Section 2: Perencanaan Kegiatan (Planning)
+                      _buildSectionCard(
+                        '2. Perencanaan Kegiatan (Planning)',
+                        projectPlan.isNotEmpty ? projectPlan : 'Tidak ada perencanaan khusus yang dicantumkan.',
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Section 3: Pelaksanaan Kegiatan / Hasil Karya
+                      _buildSectionCard(
+                        '3. Pelaksanaan Kegiatan / Hasil Karya',
+                        projectResult.isNotEmpty ? projectResult : 'Tidak ada catatan hasil karya tambahan.',
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Section 4: Berkas Dokumen PDF Terlampir
+                      if (docName != null && docName.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.cardBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _isSubmitting ? null : () => _handleAction(false),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: Color(0xFFEF4444)),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Berkas Dokumen Projek',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                      ),
                                     ),
                                   ),
-                                  icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444), size: 16),
-                                  label: const Text(
-                                    'Tolak',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFFEF4444),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                                    ),
+                                    child: const Text(
+                                      'Tap untuk baca',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2563EB),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () {
+                                    final pId = _project?['id'] is int
+                                        ? _project!['id'] as int
+                                        : int.tryParse(_project?['id']?.toString() ?? '');
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PdfViewerScreen(
+                                          title: docName,
+                                          projectId: pId,
+                                          documentUrl: _project?['document_url']?.toString(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEE2E2),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626), size: 24),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                docName,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF1E293B),
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                docSize > 0
+                                                    ? '${(docSize / (1024 * 1024)).toStringAsFixed(1)} MB • Dokumen Terlampir'
+                                                    : 'Dokumen PDF Terlampir',
+                                                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.visibility_rounded, color: Color(0xFF2563EB), size: 20),
+                                      ],
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 40,
                                 child: ElevatedButton.icon(
-                                  onPressed: _isSubmitting ? null : () => _handleAction(true),
+                                  onPressed: () {
+                                    final pId = _project?['id'] is int
+                                        ? _project!['id'] as int
+                                        : int.tryParse(_project?['id']?.toString() ?? '');
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PdfViewerScreen(
+                                          title: docName,
+                                          projectId: pId,
+                                          documentUrl: _project?['document_url']?.toString(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.menu_book_rounded, size: 18),
+                                  label: const Text(
+                                    'Buka & Baca Dokumen PDF',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2563EB),
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    elevation: 0,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
-                                  label: const Text(
-                                    'Setujui',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Riwayat Review Sebelumnya jika ada
+                      if (_reviews.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.cardBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.history_rounded, size: 16, color: Color(0xFF2563EB)),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Catatan Evaluasi Sebelumnya',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ..._reviews.map((r) {
+                                final isTeacher = r['reviewer_role'] == 'teacher';
+                                final isAcc = r['decision'] == 'approved';
+                                final revName = r['reviewer_name']?.toString() ?? (isTeacher ? 'Guru Pembimbing' : 'Instruktur DU/DI');
+                                final Color cardBg = isTeacher
+                                    ? const Color(0xFFEFF6FF)
+                                    : (isAcc ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2));
+                                final Color textColor = isTeacher
+                                    ? const Color(0xFF1E40AF)
+                                    : (isAcc ? const Color(0xFF166534) : const Color(0xFF991B1B));
+                                final String prefix = isTeacher
+                                    ? "Catatan Guru ($revName)"
+                                    : (isAcc ? "Disetujui DU/DI ($revName)" : "Perlu Revisi DU/DI ($revName)");
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: cardBg,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: isTeacher ? const Color(0xFFBFDBFE) : (isAcc ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA))),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '$prefix: ${r['note'] ?? "-"}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: textColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Section Catatan Instruktur Box
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Catatan Instruktur DU/DI',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFCBD5E1)),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: TextField(
+                                controller: _commentController,
+                                maxLines: 3,
+                                style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  border: InputBorder.none,
+                                  hintText: 'Tulis masukan atau catatan perbaikan untuk siswa...',
+                                  hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Tombol Tolak / Revisi dan Setujui
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: _isSubmitting ? null : () => _handleAction(false),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Color(0xFFEF4444)),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444), size: 16),
+                                    label: const Text(
+                                      'Minta Revisi',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFEF4444),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isSubmitting ? null : () => _handleAction(true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF2563EB),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
+                                    label: const Text(
+                                      'Setujui Projek',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 24),
                   ],
                 ),

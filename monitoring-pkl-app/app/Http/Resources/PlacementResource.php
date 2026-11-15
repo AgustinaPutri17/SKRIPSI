@@ -19,6 +19,10 @@ class PlacementResource extends JsonResource
             'start_date' => $this->start_date?->toDateString(),
             'end_date' => $this->end_date?->toDateString(),
             'status' => $this->status,
+            'dudi_score' => $this->assessment?->dudi_score !== null ? (float)$this->assessment->dudi_score : null,
+            'attendances_count' => $this->relationLoaded('attendances') 
+                ? $this->attendances->whereIn('status', ['present', 'late'])->count() 
+                : $this->attendances()->whereIn('status', ['present', 'late'])->count(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'student' => new StudentResource($this->whenLoaded('student')),
