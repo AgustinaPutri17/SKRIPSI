@@ -1018,7 +1018,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
       badgeColor = const Color(0xFF16A34A);
       badgeBg = const Color(0xFFDCFCE7);
       badgeIcon = Icons.check_circle_rounded;
-      badgeLabel = 'Disetujui DU/DI';
+      badgeLabel = 'Disetujui';
     } else if (status == 'revision') {
       badgeColor = const Color(0xFFDC2626);
       badgeBg = const Color(0xFFFEE2E2);

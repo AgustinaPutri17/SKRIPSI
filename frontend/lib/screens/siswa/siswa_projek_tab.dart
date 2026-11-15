@@ -452,7 +452,7 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
       badgeColor = const Color(0xFF16A34A);
       badgeBg = const Color(0xFFDCFCE7);
       badgeIcon = Icons.check_circle_rounded;
-      badgeLabel = 'Disetujui DU/DI';
+      badgeLabel = 'Disetujui';
     } else if (status == 'revision') {
       badgeColor = const Color(0xFFDC2626);
       badgeBg = const Color(0xFFFEE2E2);
@@ -462,7 +462,7 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
       badgeColor = const Color(0xFF2563EB);
       badgeBg = const Color(0xFFEFF6FF);
       badgeIcon = Icons.hourglass_top_rounded;
-      badgeLabel = 'Menunggu Verifikasi DU/DI';
+      badgeLabel = 'Menunggu Verifikasi';
     } else {
       badgeColor = const Color(0xFF64748B);
       badgeBg = const Color(0xFFF1F5F9);

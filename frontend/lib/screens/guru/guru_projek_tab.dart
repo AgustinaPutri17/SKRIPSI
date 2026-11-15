@@ -147,17 +147,17 @@ class _GuruProjekTabState extends State<GuruProjekTab> {
     if (status == 'approved' || isVerifiedDudi) {
       statusBadgeBg = const Color(0xFFDCFCE7);
       statusBadgeColor = const Color(0xFF16A34A);
-      statusBadgeText = 'Terverifikasi DU/DI';
+      statusBadgeText = 'Disetujui';
       statusBadgeIcon = Icons.check_circle_rounded;
     } else if (status == 'revision') {
       statusBadgeBg = const Color(0xFFFEE2E2);
       statusBadgeColor = const Color(0xFFDC2626);
-      statusBadgeText = 'Perlu Revisi DU/DI';
+      statusBadgeText = 'Perlu Revisi';
       statusBadgeIcon = Icons.warning_amber_rounded;
     } else {
       statusBadgeBg = const Color(0xFFFEF3C7);
       statusBadgeColor = const Color(0xFFD97706);
-      statusBadgeText = 'Menunggu DU/DI';
+      statusBadgeText = 'Menunggu';
       statusBadgeIcon = Icons.hourglass_top_rounded;
     }
 

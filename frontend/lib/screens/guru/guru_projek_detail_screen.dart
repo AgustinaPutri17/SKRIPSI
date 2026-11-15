@@ -154,7 +154,7 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
   Widget _buildStatusPill(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
-        return const StatusPill(text: 'Disetujui DU/DI', style: PillStyle.success);
+        return const StatusPill(text: 'Disetujui', style: PillStyle.success);
       case 'revision':
         return const StatusPill(text: 'Perlu Revisi', style: PillStyle.error);
       case 'pending':

@@ -519,7 +519,7 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                               ..._reviews.where((r) => r['reviewer_role'] != 'teacher').map((r) {
                                 final isAcc = r['decision'] == 'approved';
                                 final revName = r['reviewer_name']?.toString() ?? 'Instruktur DU/DI';
-                                final String prefix = isAcc ? "Disetujui DU/DI ($revName)" : "Perlu Revisi DU/DI ($revName)";
+                                final String prefix = isAcc ? "Disetujui ($revName)" : "Perlu Revisi ($revName)";
 
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 6),
