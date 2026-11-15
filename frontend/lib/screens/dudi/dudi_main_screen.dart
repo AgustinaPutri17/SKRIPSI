@@ -1164,7 +1164,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
           // Tombol Aksi Verifikasi / Detail
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -1188,9 +1188,8 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              icon: const Icon(Icons.assignment_turned_in_rounded, size: 16),
-              label: const Text(
-                'Periksa & Berikan Catatan Projek',
+              child: const Text(
+                'Periksa dan Berikan Catatan',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

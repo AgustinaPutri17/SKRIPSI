@@ -130,10 +130,6 @@ class _GuruProjekTabState extends State<GuruProjekTab> {
     final hasTeacherNote = _hasTeacherReview(project);
 
     final reviews = project['reviews'] as List<dynamic>? ?? [];
-    final dudiReview = reviews.firstWhere(
-      (r) => r['reviewer_role'] == 'dudi',
-      orElse: () => null,
-    );
     final teacherReview = reviews.firstWhere(
       (r) => r['reviewer_role'] == 'teacher',
       orElse: () => null,
@@ -325,39 +321,6 @@ class _GuruProjekTabState extends State<GuruProjekTab> {
             ),
           ],
 
-          // Catatan DU/DI jika ada
-          if (dudiReview != null && dudiReview['note'] != null && dudiReview['note'].toString().trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.rate_review_rounded, size: 13, color: Color(0xFF16A34A)),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Catatan DU/DI (${dudiReview['reviewer_name'] ?? 'Instruktur'}):',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    dudiReview['note'].toString(),
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF166534)),
-                  ),
-                ],
-              ),
-            ),
-          ],
 
           // Catatan Guru jika sudah ada
           if (teacherReview != null && teacherReview['note'] != null && teacherReview['note'].toString().trim().isNotEmpty) ...[
