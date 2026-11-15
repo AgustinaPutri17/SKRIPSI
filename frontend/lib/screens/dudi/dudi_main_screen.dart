@@ -59,7 +59,6 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   final Map<String, double> _studentScores = {};
 
   String _selectedLogbookFilter = 'all'; // 'all', 'submitted', 'approved', 'rejected'
-  String _selectedProjectFilter = 'all'; // 'all', 'pending', 'approved', 'revision'
 
   @override
   void initState() {
@@ -954,26 +953,6 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   // 7.4 VERIFIKASI PROJEK SISWA TAB (Halaman Terpisah)
   // ============================================================================
   Widget _buildProjekTab() {
-    // Saring hanya projek riil yang sudah diajukan oleh siswa
-    final filtered = _projects.where((proj) {
-      final status = (proj['status'] ?? 'pending').toString().toLowerCase();
-      if (_selectedProjectFilter == 'all') return true;
-      if (_selectedProjectFilter == 'pending') {
-        return status == 'pending' || status == 'submitted';
-      }
-      if (_selectedProjectFilter == 'approved') {
-        return status == 'approved';
-      }
-      if (_selectedProjectFilter == 'revision') {
-        return status == 'revision';
-      }
-      return true;
-    }).toList();
-
-    final pendingCount = _projects.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'pending' || (p['status'] ?? '').toString().toLowerCase() == 'submitted').length;
-    final approvedCount = _projects.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'approved').length;
-    final revisionCount = _projects.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'revision').length;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -983,26 +962,6 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
               title: 'Projek',
               onProfileTap: () => _onTabTapped(4),
             ),
-
-            // Filter Tabs (Semua, Menunggu, Disetujui, Perlu Revisi)
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildProjectFilterChip('all', 'Semua (${_projects.length})'),
-                  const SizedBox(width: 8),
-                  _buildProjectFilterChip('pending', 'Menunggu ($pendingCount)'),
-                  const SizedBox(width: 8),
-                  _buildProjectFilterChip('approved', 'Disetujui ($approvedCount)'),
-                  const SizedBox(width: 8),
-                  _buildProjectFilterChip('revision', 'Perlu Revisi ($revisionCount)'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -1011,52 +970,23 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                 },
                 child: _isLoadingProjects
                     ? const Center(child: CircularProgressIndicator())
-                    : filtered.isEmpty
+                    : _projects.isEmpty
                         ? ListView(
                             children: [
-                              _buildEmptyState('Tidak ada projek siswa pada kategori ini.'),
+                              _buildEmptyState('Belum ada projek siswa yang diajukan.'),
                             ],
                           )
                         : ListView.separated(
                             padding: const EdgeInsets.all(16),
-                            itemCount: filtered.length,
+                            itemCount: _projects.length,
                             separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
-                              return _buildProjectCardItem(filtered[index]);
+                              return _buildProjectCardItem(_projects[index]);
                             },
                           ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProjectFilterChip(String value, String label) {
-    final isSelected = _selectedProjectFilter == value;
-    return Center(
-      child: GestureDetector(
-        onTap: () {
-          setState(() => _selectedProjectFilter = value);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2563EB) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
-            ),
-          ),
         ),
       ),
     );
