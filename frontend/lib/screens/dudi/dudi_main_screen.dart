@@ -58,7 +58,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   List<Map<String, dynamic>> _locations = [];
   final Map<String, double> _studentScores = {};
 
-  String _selectedLogbookFilter = 'all'; // 'all', 'submitted', 'approved', 'rejected'
+  final String _selectedLogbookFilter = 'all'; // 'all', 'submitted', 'approved', 'rejected'
 
   @override
   void initState() {

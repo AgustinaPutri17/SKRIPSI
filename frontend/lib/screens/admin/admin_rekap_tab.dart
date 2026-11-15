@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/admin_service.dart';
 import '../../core/utils/file_download_helper.dart';
 import '../../core/utils/pdf_report_helper.dart';
-import '../../widgets/custom_button.dart';
 import '../../widgets/smart_pkl_header.dart';
 
 class StudentRekapItem {
@@ -1942,7 +1940,7 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                     SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Nilai Total dihitung otomatis dari (Nilai DU/DI + Nilai Guru) ÷ 2 jika guru dan instruktur DU/DI telah memasukkan penilaian.',
+                        'Nilai Akhir dihitung otomatis dari (50% × Nilai DU/DI) + (50% × Nilai Kehadiran) berdasarkan penilaian DU/DI dan persentase kehadiran siswa.',
                         style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
                       ),
                     ),
@@ -1967,28 +1965,34 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           ),
           const SizedBox(height: 20),
 
-          // 5. TOMBOL EKSPOR (PDF & EXCEL)
+          // 5. TOMBOL EKSPOR LANGSUNG (EXCEL & PDF)
           Row(
             children: [
               Expanded(
-                child: CustomButton(
-                  text: 'Cetak Rekap PDF',
-                  icon: Icons.picture_as_pdf_rounded,
-                  color: const Color(0xFFEF4444),
-                  fontSize: 12,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  onPressed: _showPdfExportDialog,
+                child: ElevatedButton.icon(
+                  onPressed: _downloadGradesCsv,
+                  icon: const Icon(Icons.table_view_rounded, size: 16),
+                  label: const Text('Unduh Excel (.csv)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: CustomButton(
-                  text: 'Ekspor Excel (.xlsx)',
-                  icon: Icons.table_view_rounded,
-                  color: const Color(0xFF16A34A),
-                  fontSize: 12,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  onPressed: _showExcelExportDialog,
+                child: ElevatedButton.icon(
+                  onPressed: _printGradesPdf,
+                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                  label: const Text('Cetak / PDF', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
             ],
@@ -2207,338 +2211,98 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MODAL EKSPOR EXCEL (NILAI)
+  // DOWNLOAD EXCEL / CSV LANGSUNG (NILAI & KEHADIRAN)
   // ─────────────────────────────────────────────────────────────────────────────
-  void _showExcelExportDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.table_view_rounded, color: Color(0xFF16A34A), size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Ekspor Nilai & Kehadiran Excel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                        Text('Data Rekapitulasi Siswa Terhitung', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    _buildMetaRow('Jumlah Siswa Hadir', '$_totalSiswa Siswa'),
-                    const Divider(height: 14),
-                    _buildMetaRow(
-                      'Rata-rata Nilai DU/DI',
-                      _rataRataNilaiDudi != null ? _rataRataNilaiDudi!.toStringAsFixed(1) : 'Belum ada nilai',
-                    ),
-                    const Divider(height: 14),
-                    _buildMetaRow(
-                      'Rata-rata Kehadiran',
-                      _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(1)}%' : 'Belum ada data',
-                    ),
-                    const Divider(height: 14),
-                    _buildMetaRow(
-                      'Rata-rata Nilai Akhir',
-                      _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : 'Belum ada nilai',
-                    ),
-                    const Divider(height: 14),
-                    _buildMetaRow('Akumulasi Kehadiran', '$_totalAkumulasiHadir Hari'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final buffer = StringBuffer();
-                        buffer.writeln('No\tNIS\tNama Siswa\tJurusan\tMitra DUDI\tGuru Pembimbing\tKehadiran\tNilai DUDI (50%)\tNilai Kehadiran (50%)\tNilai Akhir');
-                        for (int i = 0; i < _students.length; i++) {
-                          final s = _students[i];
-                          final hadir = '${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)';
-                          final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(1) : '-';
-                          final nilaiHadir = s.nilaiKehadiran.toStringAsFixed(1);
-                          final total = s.nilaiTotal != null ? s.nilaiTotal!.toStringAsFixed(1) : '-';
-                          buffer.writeln(
-                            '${i + 1}\t${s.nis}\t${s.nama}\t${s.jurusan}\t${s.dudi}\t${s.guruPembimbing}\t$hadir\t$dudi\t$nilaiHadir\t$total',
-                          );
-                        }
-                        Clipboard.setData(ClipboardData(text: buffer.toString()));
+  Future<void> _downloadGradesCsv() async {
+    if (_students.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Belum ada data nilai/kehadiran siswa untuk diunduh.'),
+          backgroundColor: Color(0xFFF59E0B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Row(
-                              children: [
-                                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text('Data tabel lengkap berhasil disalin! Silakan tempel (Paste) di Microsoft Excel atau Google Sheets.'),
-                                ),
-                              ],
-                            ),
-                            backgroundColor: Color(0xFF16A34A),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.copy_rounded, size: 16),
-                      label: const Text('Salin Data Excel'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        foregroundColor: const Color(0xFF16A34A),
-                        side: const BorderSide(color: Color(0xFF16A34A)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final buffer = StringBuffer();
-                        buffer.writeln('No,NIS,Nama Siswa,Jurusan,Mitra DUDI,Guru Pembimbing,Kehadiran,Nilai DUDI (50%),Nilai Kehadiran (50%),Nilai Akhir');
-                        for (int i = 0; i < _students.length; i++) {
-                          final s = _students[i];
-                          final hadir = '${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)';
-                          final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(1) : '-';
-                          final nilaiHadir = s.nilaiKehadiran.toStringAsFixed(1);
-                          final total = s.nilaiTotal != null ? s.nilaiTotal!.toStringAsFixed(1) : '-';
-                          buffer.writeln('${i + 1},"${s.nis}","${s.nama}","${s.jurusan}","${s.dudi}","${s.guruPembimbing}","$hadir",$dudi,$nilaiHadir,$total');
-                        }
-                        FileDownloadHelper.download(buffer.toString(), 'Rekap_Nilai_PKL_${DateTime.now().millisecondsSinceEpoch}.csv');
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Row(
-                              children: [
-                                Icon(Icons.download_done_rounded, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
-                                Expanded(child: Text('File Rekap_Nilai_PKL.csv berhasil diunduh!')),
-                              ],
-                            ),
-                            backgroundColor: Color(0xFF16A34A),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.file_download_rounded, size: 18),
-                      label: const Text('Unduh .csv'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        backgroundColor: const Color(0xFF16A34A),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+    try {
+      final buffer = StringBuffer();
+      // UTF-8 BOM agar terbaca sempurna di Microsoft Excel & Google Sheets
+      buffer.write('\uFEFF');
+      buffer.writeln('No,NIS,Nama Siswa,Jurusan,Mitra DUDI,Guru Pembimbing,Kehadiran,Nilai DUDI (50%),Nilai Kehadiran (50%),Nilai Akhir');
+      for (int i = 0; i < _students.length; i++) {
+        final s = _students[i];
+        final hadir = '${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)';
+        final dudi = s.nilaiDudi != null ? s.nilaiDudi!.toStringAsFixed(1) : '-';
+        final nilaiHadir = s.nilaiKehadiran.toStringAsFixed(1);
+        final total = s.nilaiTotal != null ? s.nilaiTotal!.toStringAsFixed(1) : '-';
+        buffer.writeln('${i + 1},"${s.nis}","${s.nama}","${s.jurusan}","${s.dudi}","${s.guruPembimbing}","$hadir",$dudi,$nilaiHadir,$total');
+      }
+
+      final fileName = 'rekap_nilai_kehadiran_${DateTime.now().millisecondsSinceEpoch}.csv';
+      FileDownloadHelper.download(buffer.toString(), fileName);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.download_done_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text('File $fileName berhasil diunduh!')),
+              ],
+            ),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
           ),
         );
-      },
-    );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengunduh file CSV nilai: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MODAL CETAK PDF (NILAI)
+  // CETAK / PDF LANGSUNG (NILAI & KEHADIRAN)
   // ─────────────────────────────────────────────────────────────────────────────
-  void _showPdfExportDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626), size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Cetak Lembar Nilai & Rekap PDF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                        Text('Dokumen Rekapitulasi Penilaian & Kehadiran', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAFAFA),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Center(
-                      child: Text('SMK NEGERI 2 BANDAR LAMPUNG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                    ),
-                    const Center(
-                      child: Text('LEMBAR REKAPITULASI PENILAIAN & KEHADIRAN PKL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
-                    ),
-                    const Divider(thickness: 1.5, color: Color(0xFF0F172A), height: 16),
-                    _buildMetaRow('Formula Nilai', 'Nilai Total = (Nilai DU/DI + Nilai Guru) ÷ 2'),
-                    const SizedBox(height: 4),
-                    _buildMetaRow('Jumlah Siswa Hadir', '$_totalSiswa Siswa Terhitung'),
-                    const SizedBox(height: 4),
-                    _buildMetaRow('Total Kehadiran', '$_totalAkumulasiHadir Hari'),
-                    const SizedBox(height: 4),
-                    _buildMetaRow('Rata-rata Nilai DU/DI', _rataRataNilaiDudi != null ? _rataRataNilaiDudi!.toStringAsFixed(1) : '-'),
-                    const SizedBox(height: 4),
-                    _buildMetaRow('Rata-rata Kehadiran', _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(1)}%' : '-'),
-                    const SizedBox(height: 4),
-                    _buildMetaRow('Rata-rata Nilai Akhir', _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : '-'),
-                    const SizedBox(height: 16),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Pembimbing Lapangan DU/DI', style: TextStyle(fontSize: 9, color: Color(0xFF64748B))),
-                        Text('Guru Pembimbing Sekolah', style: TextStyle(fontSize: 9, color: Color(0xFF64748B))),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('( ________________________ )', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
-                        Text('( ________________________ )', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                            SizedBox(width: 8),
-                            Expanded(child: Text('Laporan Rekapitulasi Nilai & Kehadiran siap dicetak!')),
-                          ],
-                        ),
-                        backgroundColor: Color(0xFFDC2626),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.print_rounded, size: 18),
-                  label: const Text('Cetak / Unduh Dokumen PDF'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ],
+  Future<void> _printGradesPdf() async {
+    if (_students.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Belum ada data nilai/kehadiran siswa untuk dicetak.'),
+          backgroundColor: Color(0xFFF59E0B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await PdfReportHelper.printGradesReport(
+        students: _students,
+        avgDudi: _rataRataNilaiDudi,
+        avgHadir: _rataRataNilaiKehadiran,
+        avgTotal: _rataRataNilaiTotal,
+        totalHadirHari: _totalAkumulasiHadir,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuat PDF nilai: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
           ),
         );
-      },
-    );
-  }
-
-  Widget _buildMetaRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-          ),
-        ),
-      ],
-    );
+      }
+    }
   }
 }

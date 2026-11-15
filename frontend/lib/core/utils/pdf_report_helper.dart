@@ -530,5 +530,264 @@ class PdfReportHelper {
       name: 'rekap_logbook_${DateTime.now().millisecondsSinceEpoch}.pdf',
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CETAK / PDF LANGSUNG (NILAI & KEHADIRAN)
+  // ─────────────────────────────────────────────────────────────────────────────
+  static Future<void> printGradesReport({
+    required List<dynamic> students,
+    double? avgDudi,
+    double? avgHadir,
+    double? avgTotal,
+    int? totalHadirHari,
+  }) async {
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final printedAt =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB';
+
+    final headers = [
+      'No',
+      'NIS',
+      'Nama Siswa',
+      'Jurusan',
+      'DU/DI (Mitra)',
+      'Guru Pembimbing',
+      'Kehadiran',
+      'DU/DI (50%)',
+      'Hadir (50%)',
+      'Nilai Akhir',
+    ];
+
+    final rows = <List<String>>[];
+    for (int i = 0; i < students.length; i++) {
+      final s = students[i];
+      final String nis = (s is Map ? s['nis'] : (s as dynamic).nis)?.toString() ?? '-';
+      final String nama = (s is Map ? s['nama'] : (s as dynamic).nama)?.toString() ?? '-';
+      final String jurusan = (s is Map ? s['jurusan'] : (s as dynamic).jurusan)?.toString() ?? '-';
+      final String dudi = (s is Map ? s['dudi'] : (s as dynamic).dudi)?.toString() ?? '-';
+      final String guru = (s is Map ? s['guru_pembimbing'] ?? s['guru'] : (s as dynamic).guruPembimbing)?.toString() ?? '-';
+
+      String hadirStr = '-';
+      try {
+        if (s is Map) {
+          if (s['kehadiran_str'] != null) {
+            hadirStr = s['kehadiran_str'].toString();
+          } else {
+            final th = s['total_hadir'] ?? s['hari_hadir'] ?? '0';
+            hadirStr = '$th Hari';
+          }
+        } else {
+          final dynamic dyn = s;
+          if (dyn.hariHadir != null) {
+            final int hh = dyn.hariHadir as int;
+            final int thw = (dyn.totalHariWajib as int?) ?? 60;
+            final double nk = (dyn.nilaiKehadiran as num).toDouble();
+            hadirStr = '$hh/$thw Hari (${nk.toStringAsFixed(0)}%)';
+          } else if (dyn.kehadiranInfo != null) {
+            final kh = dyn.kehadiranInfo;
+            hadirStr = '${kh.daysPresent}/${kh.workDays} Hari (${kh.percentage.toStringAsFixed(0)}%)';
+          } else {
+            hadirStr = '-';
+          }
+        }
+      } catch (_) {
+        hadirStr = '-';
+      }
+
+      dynamic dudiVal;
+      dynamic hadirVal;
+      dynamic totalVal;
+      try {
+        dudiVal = s is Map ? s['nilai_dudi'] : (s as dynamic).nilaiDudi;
+      } catch (_) {}
+      try {
+        hadirVal = s is Map ? s['nilai_kehadiran'] : (s as dynamic).nilaiKehadiran;
+      } catch (_) {}
+      try {
+        totalVal = s is Map ? s['nilai_total'] : (s as dynamic).nilaiTotal;
+      } catch (_) {}
+
+      final String dudiStr = dudiVal != null ? (dudiVal is num ? dudiVal.toStringAsFixed(1) : dudiVal.toString()) : '-';
+      final String hadirScoreStr = hadirVal != null ? (hadirVal is num ? hadirVal.toStringAsFixed(1) : hadirVal.toString()) : '-';
+      final String totalStr = totalVal != null ? (totalVal is num ? totalVal.toStringAsFixed(1) : totalVal.toString()) : '-';
+
+      rows.add([
+        '${i + 1}',
+        nis,
+        nama,
+        jurusan,
+        dudi,
+        guru,
+        hadirStr,
+        dudiStr,
+        hadirScoreStr,
+        totalStr,
+      ]);
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(24),
+        header: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'SMK NEGERI 2 BANDAR LAMPUNG',
+                      style: pw.TextStyle(
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue900,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      'LEMBAR REKAPITULASI PENILAIAN & KEHADIRAN SISWA PKL',
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey800,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      'Formula: Nilai Akhir = (50% x Nilai DU/DI) + (50% x Nilai Kehadiran) | Dicetak: $printedAt',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.blue50,
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                    border: pw.Border.all(color: PdfColors.blue300),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'Total Siswa: ${students.length}',
+                        style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                      ),
+                      if (avgDudi != null)
+                        pw.Text('Rata DU/DI: ${avgDudi.toStringAsFixed(1)}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue800)),
+                      if (avgHadir != null)
+                        pw.Text('Rata Kehadiran: ${avgHadir.toStringAsFixed(1)}%', style: const pw.TextStyle(fontSize: 8, color: PdfColors.teal800)),
+                      if (avgTotal != null)
+                        pw.Text('Rata Nilai Akhir: ${avgTotal.toStringAsFixed(1)}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.green800)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.Divider(thickness: 1.2, color: PdfColors.blue900),
+            pw.SizedBox(height: 6),
+          ],
+        ),
+        footer: (context) => pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              'Sistem SMART PKL - SMK Negeri 2 Bandar Lampung',
+              style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey600),
+            ),
+            pw.Text(
+              'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+            ),
+          ],
+        ),
+        build: (context) => [
+          if (rows.isEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(20),
+              child: pw.Center(
+                child: pw.Text(
+                  'Belum ada data nilai dan kehadiran siswa terhitung.',
+                  style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
+                ),
+              ),
+            )
+          else ...[
+            pw.TableHelper.fromTextArray(
+              headers: headers,
+              data: rows,
+              headerCount: 1,
+              border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
+              headerStyle: pw.TextStyle(
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.white,
+              ),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
+              cellStyle: const pw.TextStyle(fontSize: 8, color: PdfColors.grey900),
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+              rowDecoration: const pw.BoxDecoration(color: PdfColors.white),
+              oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              columnWidths: {
+                0: const pw.FixedColumnWidth(22), // No
+                1: const pw.FixedColumnWidth(44), // NIS
+                2: const pw.FlexColumnWidth(1.4), // Nama Siswa
+                3: const pw.FlexColumnWidth(1.0), // Jurusan
+                4: const pw.FlexColumnWidth(1.2), // DU/DI
+                5: const pw.FlexColumnWidth(1.1), // Guru
+                6: const pw.FixedColumnWidth(80), // Kehadiran
+                7: const pw.FixedColumnWidth(55), // DU/DI
+                8: const pw.FixedColumnWidth(55), // Hadir
+                9: const pw.FixedColumnWidth(55), // Nilai Akhir
+              },
+            ),
+            pw.SizedBox(height: 20),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Text('Pembimbing Lapangan DU/DI', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    pw.SizedBox(height: 35),
+                    pw.Text('( ______________________________ )', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Text('Guru Pembimbing Sekolah', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    pw.SizedBox(height: 35),
+                    pw.Text('( ______________________________ )', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Text('Koordinator PKL / Kepala Sekolah', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    pw.SizedBox(height: 35),
+                    pw.Text('( ______________________________ )', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+
+    final Uint8List bytes = await pdf.save();
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => bytes,
+      name: 'rekap_nilai_pkl_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
+  }
 }
 
