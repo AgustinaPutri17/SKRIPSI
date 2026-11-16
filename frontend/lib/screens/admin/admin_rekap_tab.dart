@@ -6,6 +6,8 @@ import '../../core/utils/pdf_report_helper.dart';
 import '../../widgets/smart_pkl_header.dart';
 
 class StudentRekapItem {
+  final int? placementId;
+  final int? assessmentId;
   final String nama;
   final String nis;
   final String jurusan;
@@ -16,6 +18,8 @@ class StudentRekapItem {
   final double? nilaiDudi;
 
   const StudentRekapItem({
+    this.placementId,
+    this.assessmentId,
     required this.nama,
     required this.nis,
     required this.jurusan,
@@ -194,8 +198,14 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           }
 
           if (student != null) {
+            final placementId = p['id'] != null ? int.tryParse(p['id'].toString()) : null;
+            final assessmentId = (p['assessment'] != null && p['assessment']['id'] != null)
+                ? int.tryParse(p['assessment']['id'].toString())
+                : null;
             items.add(
               StudentRekapItem(
+                placementId: placementId,
+                assessmentId: assessmentId,
                 nama: student['name']?.toString() ?? 'Siswa',
                 nis: student['nis']?.toString() ?? '-',
                 jurusan: student['major']?.toString() ?? student['class']?.toString() ?? 'Rekayasa Perangkat Lunak',
@@ -425,6 +435,68 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
           ),
         );
         _loadLogbookData();
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // HAPUS DATA NILAI SISWA
+  // ─────────────────────────────────────────────────────────────────────────────
+  Future<void> _confirmDeleteGrade(StudentRekapItem s) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: Color(0xFFDC2626), size: 24),
+            SizedBox(width: 8),
+            Text('Hapus Nilai Siswa?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus data nilai dan rekapitulasi untuk ${s.nama} (${s.nis})?\n\nPenilaian DU/DI akan direset dan baris rekap siswa ini akan dihapus dari daftar.',
+          style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Hapus Data', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (s.placementId != null) {
+        await AdminService.deletePlacementAssessment(s.placementId!);
+      }
+      setState(() {
+        _students.removeWhere((item) => item.nis == s.nis || (s.placementId != null && item.placementId == s.placementId));
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Data nilai ${s.nama} berhasil dihapus.')),
+              ],
+            ),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -1616,70 +1688,34 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                 ),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Nilai Akhir = ',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      Text(
-                        '(50% × Nilai DU/DI) + (50% × Nilai Kehadiran)',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.5,
-                          letterSpacing: 0.2,
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Nilai Akhir = ',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                      ),
-                    ],
+                        Text(
+                          '(50% × Nilai DU/DI) + (50% × Nilai Kehadiran)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // 2. KARTU RINGKASAN METRIK RATA-RATA
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.cardBorder, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  'Rata Nilai DU/DI',
-                  _rataRataNilaiDudi != null ? _rataRataNilaiDudi!.toStringAsFixed(1) : '-',
-                  const Color(0xFF2563EB),
-                ),
-                Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
-                _buildStatItem(
-                  'Rata Kehadiran',
-                  _rataRataNilaiKehadiran != null ? '${_rataRataNilaiKehadiran!.toStringAsFixed(1)}%' : '-',
-                  const Color(0xFF0D9488),
-                ),
-                Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
-                _buildStatItem(
-                  'Rata Nilai Akhir',
-                  _rataRataNilaiTotal != null ? _rataRataNilaiTotal!.toStringAsFixed(1) : '-',
-                  const Color(0xFF16A34A),
                 ),
               ],
             ),
@@ -1898,72 +1934,7 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-
-          // 4. KARTU INFORMASI FOOTER PENILAIAN & PRESENSI
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.info_outline_rounded, color: Color(0xFF2563EB), size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Ketentuan Penilaian PKL',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.check_circle_outline_rounded, size: 15, color: Color(0xFF16A34A)),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Nilai Akhir dihitung otomatis dari (50% × Nilai DU/DI) + (50% × Nilai Kehadiran) berdasarkan penilaian DU/DI dan persentase kehadiran siswa.',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.check_circle_outline_rounded, size: 15, color: Color(0xFF16A34A)),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Kehadiran dihitung per hari kerja berdasarkan rekaman presensi siswa yang telah mengisi absensi masuk dan keluar.',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
           // 5. TOMBOL EKSPOR LANGSUNG (EXCEL & PDF)
           Row(
@@ -2030,16 +2001,6 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-      ],
-    );
-  }
-
   Widget _buildStudentRow(StudentRekapItem s) {
     final String nilaiDudiText = s.nilaiDudi != null
         ? (s.nilaiDudi! % 1 == 0 ? s.nilaiDudi!.toInt().toString() : s.nilaiDudi!.toStringAsFixed(1))
@@ -2069,16 +2030,40 @@ class _AdminRekapTabState extends State<AdminRekapTab> {
                   style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
                 ),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Hadir: ${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)',
-                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Hadir: ${s.hariHadir}/${s.totalHariWajib} Hari (${s.nilaiKehadiran.toStringAsFixed(0)}%)',
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () => _confirmDeleteGrade(s),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 11, color: Color(0xFFDC2626)),
+                            SizedBox(width: 2),
+                            Text('Hapus', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

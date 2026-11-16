@@ -88,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('periods', AdminPeriodController::class);
 
         // Placements CRUD & Toggle Status
+        Route::delete('/placements/{id}/assessment', [AdminPlacementController::class, 'deleteAssessment']);
         Route::post('/placements/{id}/toggle-status', [AdminPlacementController::class, 'toggleStatus']);
         Route::apiResource('placements', AdminPlacementController::class);
 

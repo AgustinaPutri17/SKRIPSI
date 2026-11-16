@@ -1083,6 +1083,24 @@ class AdminService {
     }
   }
 
+  /// Endpoint: DELETE /api/admin/placements/{id}/assessment
+  /// Deskripsi: Menghapus penilaian PKL siswa
+  static Future<Map<String, dynamic>> deletePlacementAssessment(int id) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/admin/placements/$id/assessment');
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 5));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': data['message'] ?? 'Penilaian PKL berhasil dihapus.'};
+      }
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menghapus penilaian PKL.')};
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
+    }
+  }
+
   /// ============================================================================
   /// API Backend: 4.7 Master Data Periode PKL - Aktivasi Periode
   /// Endpoint: POST /api/admin/periods/{id}/activate
