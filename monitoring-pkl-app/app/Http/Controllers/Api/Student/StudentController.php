@@ -309,8 +309,11 @@ class StudentController extends Controller
     {
         $user = $request->user();
         $student = $user->student;
-        $placement = $student?->activePlacement();
-        $today = now()->toDateString();
+        $placement = $student?->activePlacement() ?? $student?->placements()->latest()->first();
+        
+        $todayWib = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+        $todayUtc = \Carbon\Carbon::now('UTC')->toDateString();
+        $possibleDates = array_values(array_unique([$todayWib, $todayUtc]));
 
         $todayAttendance = null;
         $todayJournal = null;
@@ -333,7 +336,12 @@ class StudentController extends Controller
 
             // 1. Presensi Hari Ini
             $todayAttendance = Attendance::where('placement_id', $placement->id)
-                ->where('attendance_date', $today)
+                ->where(function ($q) use ($possibleDates, $todayWib) {
+                    $q->whereIn('attendance_date', $possibleDates)
+                      ->orWhereDate('created_at', $todayWib)
+                      ->orWhereDate('check_in_at', $todayWib);
+                })
+                ->latest('id')
                 ->first();
 
             // 2. Statistik Presensi & Persentase Kehadiran
@@ -405,7 +413,11 @@ class StudentController extends Controller
             ];
 
             $todayJournal = Journal::where('placement_id', $placement->id)
-                ->whereDate('logbook_date', $today)
+                ->where(function ($q) use ($possibleDates, $todayWib) {
+                    $q->whereIn('logbook_date', $possibleDates)
+                      ->orWhereDate('created_at', $todayWib);
+                })
+                ->latest('id')
                 ->first();
 
             $latestJournalModel = Journal::where('placement_id', $placement->id)

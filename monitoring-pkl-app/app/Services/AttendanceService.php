@@ -31,11 +31,17 @@ class AttendanceService
             throw new \Exception('Placement tidak aktif.', 422);
         }
 
-        $today = now()->toDateString();
+        $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+        $todayUtc = \Carbon\Carbon::now('UTC')->toDateString();
+        $possibleDates = array_values(array_unique([$today, $todayUtc]));
 
         // Check if already checked in today
         $existing = Attendance::where('placement_id', $placement->id)
-            ->whereDate('attendance_date', $today)
+            ->where(function ($q) use ($possibleDates, $today) {
+                $q->whereIn('attendance_date', $possibleDates)
+                  ->orWhereDate('created_at', $today);
+            })
+            ->latest('id')
             ->first();
 
         if ($existing && $existing->hasCheckedIn()) {
@@ -129,10 +135,16 @@ class AttendanceService
             throw new \Exception('Placement tidak aktif.', 422);
         }
 
-        $today = now()->toDateString();
+        $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+        $todayUtc = \Carbon\Carbon::now('UTC')->toDateString();
+        $possibleDates = array_values(array_unique([$today, $todayUtc]));
 
         $attendance = Attendance::where('placement_id', $placement->id)
-            ->whereDate('attendance_date', $today)
+            ->where(function ($q) use ($possibleDates, $today) {
+                $q->whereIn('attendance_date', $possibleDates)
+                  ->orWhereDate('created_at', $today);
+            })
+            ->latest('id')
             ->first();
 
         if ($attendance && $attendance->hasCheckedOut()) {

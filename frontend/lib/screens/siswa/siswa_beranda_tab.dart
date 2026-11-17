@@ -137,7 +137,7 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
           _hasCheckedIn = checkInAt != null && checkInAt.isNotEmpty;
           if (_hasCheckedIn) {
             try {
-              final dt = DateTime.parse(checkInAt!);
+              final dt = DateTime.parse(checkInAt!).toLocal();
               _checkInTime = "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB";
             } catch (_) {
               _checkInTime = attToday['check_in_time']?.toString() ?? 'Tercatat';
@@ -156,7 +156,7 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
           _hasCheckedOut = checkOutAt != null && checkOutAt.isNotEmpty;
           if (_hasCheckedOut) {
             try {
-              final dt = DateTime.parse(checkOutAt!);
+              final dt = DateTime.parse(checkOutAt!).toLocal();
               _checkOutTime = "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB";
             } catch (_) {
               _checkOutTime = attToday['check_out_time']?.toString() ?? 'Selesai';
