@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/services/student_service.dart';
 import '../../widgets/smart_pkl_header.dart';
+import '../../widgets/status_pill.dart';
 import '../common/pdf_viewer_screen.dart';
 
 /// ==============================================================================
@@ -461,31 +462,21 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
     final reviews = proj['reviews'] as List<dynamic>? ?? [];
 
     // Konfigurasi Status Badge
-    Color badgeColor;
-    Color badgeBg;
-    IconData badgeIcon;
-    String badgeLabel;
+    final String badgeLabel;
+    final PillStyle badgeStyle;
 
     if (status == 'approved') {
-      badgeColor = const Color(0xFF16A34A);
-      badgeBg = const Color(0xFFDCFCE7);
-      badgeIcon = Icons.check_circle_rounded;
       badgeLabel = 'Disetujui';
+      badgeStyle = PillStyle.success;
     } else if (status == 'revision') {
-      badgeColor = const Color(0xFFDC2626);
-      badgeBg = const Color(0xFFFEE2E2);
-      badgeIcon = Icons.warning_amber_rounded;
-      badgeLabel = 'Perlu Revisi';
+      badgeLabel = 'Direvisi';
+      badgeStyle = PillStyle.error;
     } else if (status == 'pending' || status == 'submitted') {
-      badgeColor = const Color(0xFF2563EB);
-      badgeBg = const Color(0xFFEFF6FF);
-      badgeIcon = Icons.hourglass_top_rounded;
-      badgeLabel = 'Menunggu Verifikasi';
+      badgeLabel = 'Menunggu';
+      badgeStyle = PillStyle.warning;
     } else {
-      badgeColor = const Color(0xFF64748B);
-      badgeBg = const Color(0xFFF1F5F9);
-      badgeIcon = Icons.edit_note_rounded;
-      badgeLabel = 'Draf Projek';
+      badgeLabel = 'Draf';
+      badgeStyle = PillStyle.neutral;
     }
 
     return Container(
@@ -523,28 +514,9 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badgeIcon, size: 13, color: badgeColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      badgeLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor,
-                      ),
-                    ),
-                  ],
-                ),
+              StatusPill(
+                text: badgeLabel,
+                style: badgeStyle,
               ),
             ],
           ),

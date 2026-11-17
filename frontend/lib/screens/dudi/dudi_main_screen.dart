@@ -1360,26 +1360,18 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     final docName = proj['document_name']?.toString();
     final docSize = proj['document_size'] as int? ?? 0;
 
-    Color badgeColor;
-    Color badgeBg;
-    IconData badgeIcon;
-    String badgeLabel;
+    final String badgeLabel;
+    final PillStyle badgeStyle;
 
     if (status == 'approved') {
-      badgeColor = const Color(0xFF16A34A);
-      badgeBg = const Color(0xFFDCFCE7);
-      badgeIcon = Icons.check_circle_rounded;
       badgeLabel = 'Disetujui';
+      badgeStyle = PillStyle.success;
     } else if (status == 'revision') {
-      badgeColor = const Color(0xFFDC2626);
-      badgeBg = const Color(0xFFFEE2E2);
-      badgeIcon = Icons.warning_amber_rounded;
-      badgeLabel = 'Perlu Revisi';
+      badgeLabel = 'Direvisi';
+      badgeStyle = PillStyle.error;
     } else {
-      badgeColor = const Color(0xFFD97706);
-      badgeBg = const Color(0xFFFEF3C7);
-      badgeIcon = Icons.hourglass_top_rounded;
-      badgeLabel = 'Menunggu Verifikasi';
+      badgeLabel = 'Menunggu';
+      badgeStyle = PillStyle.warning;
     }
 
     return Container(
@@ -1431,24 +1423,9 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badgeIcon, size: 12, color: badgeColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      badgeLabel,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: badgeColor),
-                    ),
-                  ],
-                ),
+              StatusPill(
+                text: badgeLabel,
+                style: badgeStyle,
               ),
             ],
           ),

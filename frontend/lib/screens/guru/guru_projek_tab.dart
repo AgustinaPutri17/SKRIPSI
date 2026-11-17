@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/teacher_service.dart';
 import '../../widgets/smart_pkl_header.dart';
+import '../../widgets/status_pill.dart';
 import 'guru_projek_detail_screen.dart';
 
 /// ==============================================================================
@@ -135,26 +136,18 @@ class _GuruProjekTabState extends State<GuruProjekTab> {
       orElse: () => null,
     );
 
-    Color statusBadgeBg;
-    Color statusBadgeColor;
-    String statusBadgeText;
-    IconData statusBadgeIcon;
+    final String statusBadgeText;
+    final PillStyle statusBadgeStyle;
 
     if (status == 'approved' || isVerifiedDudi) {
-      statusBadgeBg = const Color(0xFFDCFCE7);
-      statusBadgeColor = const Color(0xFF16A34A);
       statusBadgeText = 'Disetujui';
-      statusBadgeIcon = Icons.check_circle_rounded;
+      statusBadgeStyle = PillStyle.success;
     } else if (status == 'revision') {
-      statusBadgeBg = const Color(0xFFFEE2E2);
-      statusBadgeColor = const Color(0xFFDC2626);
-      statusBadgeText = 'Perlu Revisi';
-      statusBadgeIcon = Icons.warning_amber_rounded;
+      statusBadgeText = 'Direvisi';
+      statusBadgeStyle = PillStyle.error;
     } else {
-      statusBadgeBg = const Color(0xFFFEF3C7);
-      statusBadgeColor = const Color(0xFFD97706);
       statusBadgeText = 'Menunggu';
-      statusBadgeIcon = Icons.hourglass_top_rounded;
+      statusBadgeStyle = PillStyle.warning;
     }
 
     return Container(
@@ -215,28 +208,9 @@ class _GuruProjekTabState extends State<GuruProjekTab> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusBadgeBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: statusBadgeColor.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(statusBadgeIcon, size: 12, color: statusBadgeColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      statusBadgeText,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: statusBadgeColor,
-                      ),
-                    ),
-                  ],
-                ),
+              StatusPill(
+                text: statusBadgeText,
+                style: statusBadgeStyle,
               ),
             ],
           ),

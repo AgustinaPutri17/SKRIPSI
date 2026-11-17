@@ -164,7 +164,7 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
       case 'approved':
         return const StatusPill(text: 'Disetujui', style: PillStyle.success);
       case 'revision':
-        return const StatusPill(text: 'Perlu Revisi', style: PillStyle.error);
+        return const StatusPill(text: 'Direvisi', style: PillStyle.error);
       case 'pending':
       case 'submitted':
         return const StatusPill(text: 'Menunggu', style: PillStyle.warning);

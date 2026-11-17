@@ -156,10 +156,10 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
       case 'approved':
         return const StatusPill(text: 'Disetujui', style: PillStyle.success);
       case 'revision':
-        return const StatusPill(text: 'Perlu Revisi', style: PillStyle.error);
+        return const StatusPill(text: 'Direvisi', style: PillStyle.error);
       case 'pending':
       case 'submitted':
-        return const StatusPill(text: 'Menunggu Verifikasi', style: PillStyle.warning);
+        return const StatusPill(text: 'Menunggu', style: PillStyle.warning);
       default:
         return const StatusPill(text: 'Draf', style: PillStyle.neutral);
     }
