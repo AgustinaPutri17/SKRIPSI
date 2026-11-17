@@ -111,11 +111,7 @@ class _SiswaMainScreenState extends State<SiswaMainScreen> {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Badge(
-                  smallSize: 8,
-                  backgroundColor: Colors.red,
-                  child: Icon(Icons.fact_check_outlined, size: 22),
-                ),
+                child: Icon(Icons.fact_check_outlined, size: 22),
               ),
               activeIcon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
