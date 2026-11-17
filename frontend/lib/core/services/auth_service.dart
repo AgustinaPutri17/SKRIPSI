@@ -13,7 +13,7 @@ class AuthService {
   static const String railwayProductionUrl = 'https://skripsi-production-ce547be8.up.railway.app/api';
 
   /// URL Cloudflare Tunnel cadangan
-  static const String cloudflareTunnelUrl = 'https://poem-pierre-get-lone.trycloudflare.com/api';
+  static const String cloudflareTunnelUrl = 'https://article-collect-compound-warren.trycloudflare.com/api';
 
   static String? _cachedBaseUrl;
 
@@ -38,7 +38,7 @@ class AuthService {
       } catch (_) {}
       const webOptions = [
         'https://skripsi-production-ce547be8.up.railway.app/api',
-        'https://poem-pierre-get-lone.trycloudflare.com/api',
+        'https://article-collect-compound-warren.trycloudflare.com/api',
         'http://localhost:8000/api',
         'http://127.0.0.1:8000/api',
       ];
@@ -50,17 +50,15 @@ class AuthService {
 
     if (Platform.isAndroid) {
       // Prioritas Android:
-      // 1. 127.0.0.1 (USB adb reverse via kabel Tipe-C lokal laptop)
-      // 2. IP Wi-Fi lokal laptop (192.168.100.13)
-      // 3. Android Emulator host (10.0.2.2)
-      // 4. Railway Cloud (cadangan jika laptop mati)
-      // 5. Cloudflare Tunnel URL aktif
+      // 1. Railway Cloud 24 Jam Online (langsung bekerja saat diinstall di HP)
+      // 2. 127.0.0.1 (USB adb reverse via kabel Tipe-C lokal laptop)
+      // 3. IP Wi-Fi lokal laptop (192.168.100.13)
+      // 4. Android Emulator host (10.0.2.2)
       const androidOptions = [
+        'https://skripsi-production-ce547be8.up.railway.app/api',
         'http://127.0.0.1:8000/api',
         'http://192.168.100.13:8000/api',
         'http://10.0.2.2:8000/api',
-        'https://skripsi-production-ce547be8.up.railway.app/api',
-        'https://poem-pierre-get-lone.trycloudflare.com/api',
       ];
       for (final opt in androidOptions) {
         if (!list.contains(opt)) list.add(opt);
