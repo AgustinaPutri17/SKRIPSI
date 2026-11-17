@@ -30,9 +30,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
 
   // Placement Data
   String _dudiName = '-';
-  String _supervisorName = '-';
-  String _teacherName = '-';
-  String _periodName = '-';
 
   // Attendance Today
   bool _hasCheckedIn = false;
@@ -53,7 +50,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
   int _logbookApprovedCount = 0;
   int _logbookTotalCount = 0;
 
-  Map<String, dynamic>? _pklProgress;
   Map<String, dynamic>? _latestJournal;
 
   @override
@@ -115,19 +111,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
             final cot = loc!['check_out_time'].toString();
             _locationCheckOutTime = cot.length >= 5 ? cot.substring(0, 5) : cot;
           }
-
-          final spv = placementData['field_supervisor'] as Map<String, dynamic>?;
-          final spvUser = spv?['user'] as Map<String, dynamic>?;
-          _supervisorName = spv?['name']?.toString() ?? spvUser?['name']?.toString() ?? '-';
-
-          final teacher = placementData['teacher'] as Map<String, dynamic>?;
-          final teacherUser = teacher?['user'] as Map<String, dynamic>?;
-          final tName = teacher?['name']?.toString() ?? teacherUser?['name']?.toString() ?? '-';
-          final sSchool = studentInfo?['school_name']?.toString() ?? 'SMKN 2 Bandar Lampung';
-          _teacherName = tName != '-' ? '$tName · $sSchool' : '-';
-
-          final period = placementData['period'] as Map<String, dynamic>?;
-          _periodName = period?['name']?.toString() ?? 'Periode PKL';
         }
 
         // 3. Presensi Hari Ini
@@ -191,10 +174,7 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
           _logbookTotalCount = (jStats['total'] as num?)?.toInt() ?? 0;
         }
 
-        // 6. Progres PKL
-        _pklProgress = dashboard['pkl_progress'] as Map<String, dynamic>?;
-
-        // 7. Logbook Terbaru
+        // 6. Logbook Terbaru
         _latestJournal = dashboard['latest_journal'] as Map<String, dynamic>?;
       }
     } catch (_) {
@@ -268,18 +248,10 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
 
                       // 3. BARIS KARTU RINGKASAN: Kehadiran (%) & Logbook ACC (x/y)
                       _buildSummaryStatsRow(),
-                      const SizedBox(height: 16),
-
-                      // 4. KARTU PROGRES PKL (Hari ke-x dari y & Sisa hari)
-                      _buildPklProgressCard(),
                       const SizedBox(height: 20),
 
-                      // 5. STATUS LOGBOOK TERBARU (Catatan Instruktur)
+                      // 4. STATUS LOGBOOK TERBARU (Catatan Instruktur)
                       _buildLatestLogbookSection(),
-                      const SizedBox(height: 20),
-
-                      // 6. INFO PENEMPATAN PKL (Mitra DU/DI, Instruktur, Guru Pembimbing)
-                      _buildPenempatanCard(),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -712,77 +684,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
     );
   }
 
-  /// ── KARTU PROGRES PKL ──
-  Widget _buildPklProgressCard() {
-    final int currentDay = (_pklProgress?['current_day'] as num?)?.toInt() ?? 0;
-    final int totalDays = (_pklProgress?['total_days'] as num?)?.toInt() ?? 0;
-    final int remainingDays = (_pklProgress?['remaining_days'] as num?)?.toInt() ?? 0;
-    final double percentDouble = ((_pklProgress?['percentage'] as num?)?.toDouble() ?? 0.0) / 100.0;
-    final String startFmt = _pklProgress?['start_formatted']?.toString() ?? '';
-    final String endFmt = _pklProgress?['end_formatted']?.toString() ?? '';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Progres PKL',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _pklProgress?['period_name']?.toString() ?? _periodName,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: percentDouble.clamp(0.0, 1.0),
-              minHeight: 8,
-              color: const Color(0xFF2563EB),
-              backgroundColor: const Color(0xFFE2E8F0),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                totalDays > 0 ? 'Hari ke-$currentDay dari $totalDays' : 'Belum dimulai',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-              ),
-              Text(
-                totalDays > 0 ? 'Sisa $remainingDays hari' : '-',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-              ),
-            ],
-          ),
-          if (startFmt.isNotEmpty && endFmt.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              '$startFmt – $endFmt',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   /// ── BAGIAN LOGBOOK TERBARU (DENGAN CATATAN DARI INSTRUKTUR) ──
   Widget _buildLatestLogbookSection() {
     return Column(
@@ -979,98 +880,6 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
           color: textColor,
         ),
       ),
-    );
-  }
-
-  /// ── KARTU INFORMASI PENEMPATAN PKL ──
-  Widget _buildPenempatanCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Penempatan PKL',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 14),
-
-          // 1. Mitra DU/DI
-          _buildPlacementRow(
-            icon: Icons.storefront_rounded,
-            label: 'Mitra DU/DI',
-            value: _dudiName,
-          ),
-          const Divider(height: 20, color: Color(0xFFF1F5F9)),
-
-          // 2. Instruktur Lapangan DU/DI
-          _buildPlacementRow(
-            icon: Icons.badge_outlined,
-            label: 'Instruktur Lapangan',
-            value: _supervisorName,
-          ),
-          const Divider(height: 20, color: Color(0xFFF1F5F9)),
-
-          // 3. Guru Pembimbing Sekolah
-          _buildPlacementRow(
-            icon: Icons.school_rounded,
-            label: 'Guru Pembimbing',
-            value: _teacherName,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Item Baris Penempatan PKL
-  Widget _buildPlacementRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: const Color(0xFF2563EB), size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
