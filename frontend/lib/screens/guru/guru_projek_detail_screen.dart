@@ -215,30 +215,6 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Banner Info Bimbingan
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.school_rounded, color: Color(0xFF2563EB), size: 18),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Guru pembimbing dapat memberikan catatan arahan bimbingan yang akan langsung terkirim ke siswa.',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E40AF)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
                     // Siswa Profile Card
                     Container(
                       decoration: BoxDecoration(
