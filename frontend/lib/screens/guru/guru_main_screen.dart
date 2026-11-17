@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/services/teacher_service.dart';
 import 'guru_beranda_tab.dart';
 import 'guru_rekap_tab.dart';
 import 'guru_verifikasi_tab.dart';
@@ -19,17 +20,33 @@ class GuruMainScreen extends StatefulWidget {
 
 class _GuruMainScreenState extends State<GuruMainScreen> {
   late int _currentIndex;
+  int _pendingLeaves = 0;
+  int _pendingJournals = 0;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _loadBadges();
+  }
+
+  Future<void> _loadBadges() async {
+    try {
+      final data = await TeacherService.getDashboard();
+      if (data != null && mounted) {
+        setState(() {
+          _pendingLeaves = int.tryParse(data['leave_pending']?.toString() ?? '') ?? 0;
+          _pendingJournals = int.tryParse(data['journals_pending']?.toString() ?? '') ?? 0;
+        });
+      }
+    } catch (_) {}
   }
 
   void _onTabTapped(int index) {
     setState(() {
       _currentIndex = index.clamp(0, 4);
     });
+    _loadBadges();
   }
 
   @override
@@ -79,8 +96,8 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
           unselectedFontSize: 11,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
-          items: const [
-            BottomNavigationBarItem(
+          items: [
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
                 child: Icon(Icons.grid_view_outlined, size: 22),
@@ -93,27 +110,47 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
             ),
             BottomNavigationBarItem(
               icon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.medical_services_outlined, size: 22),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Badge(
+                  isLabelVisible: _pendingLeaves > 0,
+                  label: Text('$_pendingLeaves', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  backgroundColor: const Color(0xFFDC2626),
+                  child: const Icon(Icons.medical_services_outlined, size: 22),
+                ),
               ),
               activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.medical_services_rounded, size: 22),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Badge(
+                  isLabelVisible: _pendingLeaves > 0,
+                  label: Text('$_pendingLeaves', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  backgroundColor: const Color(0xFFDC2626),
+                  child: const Icon(Icons.medical_services_rounded, size: 22),
+                ),
               ),
               label: 'Izin & Sakit',
             ),
             BottomNavigationBarItem(
               icon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.fact_check_outlined, size: 22),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Badge(
+                  isLabelVisible: _pendingJournals > 0,
+                  label: Text('$_pendingJournals', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  backgroundColor: const Color(0xFFDC2626),
+                  child: const Icon(Icons.fact_check_outlined, size: 22),
+                ),
               ),
               activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.fact_check_rounded, size: 22),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Badge(
+                  isLabelVisible: _pendingJournals > 0,
+                  label: Text('$_pendingJournals', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  backgroundColor: const Color(0xFFDC2626),
+                  child: const Icon(Icons.fact_check_rounded, size: 22),
+                ),
               ),
               label: 'Logbook',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
                 child: Icon(Icons.assignment_outlined, size: 22),
@@ -124,7 +161,7 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
               ),
               label: 'Projek',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
                 child: Icon(Icons.person_outline_rounded, size: 22),

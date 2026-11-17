@@ -53,9 +53,33 @@ class PlacementController extends Controller
 
     public function store(StorePlacementRequest $request): JsonResponse
     {
-        $placement = Placement::create($request->validated());
+        $data = $request->validated();
+        $studentIds = $request->input('student_ids');
+        if (empty($studentIds) && $request->filled('student_id')) {
+            $studentIds = [$request->input('student_id')];
+        }
+        $studentIds = is_array($studentIds) ? $studentIds : [$studentIds];
+
+        $createdPlacements = [];
+        foreach ($studentIds as $sId) {
+            if (!$sId) continue;
+            $itemData = $data;
+            unset($itemData['student_ids']);
+            $itemData['student_id'] = $sId;
+            $placement = Placement::create($itemData);
+            $createdPlacements[] = $placement->load(['student.user', 'location', 'period', 'teacher.user', 'fieldSupervisor.user']);
+        }
+
+        if (count($createdPlacements) === 1) {
+            return $this->created(
+                new PlacementResource($createdPlacements[0]),
+                'Penempatan siswa berhasil disimpan.'
+            );
+        }
+
         return $this->created(
-            new PlacementResource($placement->load(['student', 'location', 'period', 'teacher', 'fieldSupervisor']))
+            PlacementResource::collection(collect($createdPlacements)),
+            count($createdPlacements) . ' penempatan siswa berhasil disimpan.'
         );
     }
 

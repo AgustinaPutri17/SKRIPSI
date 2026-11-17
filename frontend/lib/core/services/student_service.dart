@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
@@ -539,7 +541,7 @@ class StudentService {
       try {
         final url = Uri.parse('${AuthService.baseUrl}/student/projects');
         final headers = await _getHeaders();
-        final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 4));
+        final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
@@ -611,11 +613,31 @@ class StudentService {
           request.fields['document_name'] = documentName;
         }
 
-        request.files.add(await http.MultipartFile.fromPath(
-          'document',
-          filePath,
-          filename: documentName ?? 'projek_laporan.pdf',
-        ));
+        List<int>? bytes;
+        try {
+          if (!kIsWeb) {
+            final f = File(filePath);
+            if (await f.exists()) {
+              bytes = await f.readAsBytes();
+            }
+          }
+        } catch (_) {}
+
+        if (bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'document',
+            bytes,
+            filename: documentName ?? 'projek_laporan.pdf',
+            contentType: MediaType('application', 'pdf'),
+          ));
+        } else {
+          request.files.add(await http.MultipartFile.fromPath(
+            'document',
+            filePath,
+            filename: documentName ?? 'projek_laporan.pdf',
+            contentType: MediaType('application', 'pdf'),
+          ));
+        }
 
         final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
         final response = await http.Response.fromStream(streamedResponse);
@@ -628,8 +650,18 @@ class StudentService {
             'data': data['data'] ?? payload,
           };
         } else {
-          final errData = jsonDecode(response.body);
-          throw Exception(errData['message'] ?? 'Gagal mengunggah projek (Status: ${response.statusCode})');
+          try {
+            final errData = jsonDecode(response.body);
+            return {
+              'success': false,
+              'message': errData['message'] ?? 'Gagal mengunggah projek (Status: ${response.statusCode})',
+            };
+          } catch (_) {
+            return {
+              'success': false,
+              'message': 'Gagal mengunggah projek (Status: ${response.statusCode})',
+            };
+          }
         }
       } else {
         final headers = await _getHeaders();
@@ -637,7 +669,7 @@ class StudentService {
           url,
           headers: headers,
           body: jsonEncode(payload),
-        ).timeout(const Duration(seconds: 10));
+        ).timeout(const Duration(seconds: 15));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
@@ -646,17 +678,28 @@ class StudentService {
             'message': data['message'] ?? 'Projek berhasil diajukan untuk verifikasi pembimbing DU/DI!',
             'data': data['data'] ?? payload,
           };
+        } else {
+          try {
+            final errData = jsonDecode(response.body);
+            return {
+              'success': false,
+              'message': errData['message'] ?? 'Gagal menyimpan projek (Status: ${response.statusCode})',
+            };
+          } catch (_) {
+            return {
+              'success': false,
+              'message': 'Gagal menyimpan projek (Status: ${response.statusCode})',
+            };
+          }
         }
       }
     } catch (e) {
       debugPrint('Error saveProjectSubmission: $e');
+      return {
+        'success': false,
+        'message': 'Gagal mengirim projek: $e',
+      };
     }
-
-    return {
-      'success': true,
-      'message': 'Projek berhasil disimpan & diajukan untuk verifikasi!',
-      'data': payload,
-    };
   }
 
   /// ============================================================================
@@ -669,7 +712,7 @@ class StudentService {
     try {
       final url = Uri.parse('${AuthService.baseUrl}/student/projects/history');
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 6));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -692,7 +735,7 @@ class StudentService {
     try {
       final url = Uri.parse('${AuthService.baseUrl}/student/assessment');
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 6));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);

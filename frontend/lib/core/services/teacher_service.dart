@@ -28,7 +28,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/dashboard');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -50,7 +50,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/students');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -71,7 +71,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/students/$studentId');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -177,7 +177,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/logbooks/$id');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -320,7 +320,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/leave-requests$queryParams');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -387,7 +387,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/projects');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -408,7 +408,7 @@ class TeacherService {
     final url = Uri.parse('${AuthService.baseUrl}/teacher/projects/$id');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);

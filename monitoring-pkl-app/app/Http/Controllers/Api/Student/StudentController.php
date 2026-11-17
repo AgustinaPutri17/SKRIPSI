@@ -307,18 +307,94 @@ class StudentController extends Controller
 
     public function dashboard(Request $request): JsonResponse
     {
-        $student = $request->user()->student;
+        $user = $request->user();
+        $student = $user->student;
         $placement = $student?->activePlacement();
         $today = now()->toDateString();
 
         $todayAttendance = null;
+        $todayJournal = null;
+        $latestJournal = null;
         $journalStats = ['total' => 0, 'draft' => 0, 'submitted' => 0, 'approved' => 0, 'rejected' => 0];
+        $attendanceStats = [
+            'present' => 0,
+            'late' => 0,
+            'sick' => 0,
+            'permission' => 0,
+            'absent' => 0,
+            'total_present_days' => 0,
+            'total_recorded_days' => 0,
+            'percentage' => 0,
+        ];
+        $pklProgress = null;
 
         if ($placement) {
+            $placement->load(['location', 'period', 'teacher.user', 'fieldSupervisor.user']);
+
+            // 1. Presensi Hari Ini
             $todayAttendance = Attendance::where('placement_id', $placement->id)
                 ->where('attendance_date', $today)
                 ->first();
 
+            // 2. Statistik Presensi & Persentase Kehadiran
+            $attendances = Attendance::where('placement_id', $placement->id)->get();
+            $presentCount = $attendances->whereIn('status', ['present', 'late', 'approved'])->count();
+            $lateCount = $attendances->where('status', 'late')->count();
+            $sickCount = $attendances->where('status', 'sick')->count();
+            $permCount = $attendances->where('status', 'permission')->count();
+            $absentCount = $attendances->where('status', 'absent')->count();
+            $totalCount = $attendances->count();
+
+            $startDate = $placement->start_date ? \Carbon\Carbon::parse($placement->start_date) : now();
+            $endDate = $placement->end_date ? \Carbon\Carbon::parse($placement->end_date) : now()->addDays(90);
+
+            $daysElapsed = 0;
+            if (now()->greaterThanOrEqualTo($startDate)) {
+                $daysElapsed = $startDate->diffInDays(now()->min($endDate)) + 1;
+            }
+
+            $percentage = $daysElapsed > 0 
+                ? min(100, max(0, round(($presentCount / max(1, $daysElapsed)) * 100))) 
+                : ($totalCount > 0 ? min(100, round(($presentCount / $totalCount) * 100)) : 0);
+
+            $attendanceStats = [
+                'present' => $presentCount,
+                'late' => $lateCount,
+                'sick' => $sickCount,
+                'permission' => $permCount,
+                'absent' => $absentCount,
+                'total_present_days' => $presentCount,
+                'total_recorded_days' => $totalCount,
+                'days_elapsed' => $daysElapsed,
+                'percentage' => $percentage,
+            ];
+
+            // 3. Progres PKL
+            $totalPklDays = max(1, $startDate->diffInDays($endDate) + 1);
+            $currentPklDay = 0;
+            if (now()->greaterThanOrEqualTo($startDate)) {
+                $currentPklDay = min($totalPklDays, $startDate->diffInDays(now()) + 1);
+            }
+            $remainingPklDays = max(0, $totalPklDays - $currentPklDay);
+            $progressPercent = min(100, max(0, round(($currentPklDay / $totalPklDays) * 100)));
+
+            $months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            $startFormatted = $startDate->day . ' ' . ($months[$startDate->month] ?? $startDate->format('M'));
+            $endFormatted = $endDate->day . ' ' . ($months[$endDate->month] ?? $endDate->format('M')) . ' ' . $endDate->year;
+
+            $pklProgress = [
+                'period_name' => $placement->period?->name ?? 'PKL',
+                'start_date' => $startDate->format('Y-m-d'),
+                'end_date' => $endDate->format('Y-m-d'),
+                'start_formatted' => $startFormatted,
+                'end_formatted' => $endFormatted,
+                'total_days' => $totalPklDays,
+                'current_day' => $currentPklDay,
+                'remaining_days' => $remainingPklDays,
+                'percentage' => $progressPercent,
+            ];
+
+            // 4. Logbook Hari Ini & Logbook Terbaru
             $placementIds = $student->placements()->pluck('id');
             $journalStats = [
                 'total' => Journal::whereIn('placement_id', $placementIds)->count(),
@@ -327,12 +403,51 @@ class StudentController extends Controller
                 'approved' => Journal::whereIn('placement_id', $placementIds)->where('status', 'approved')->count(),
                 'rejected' => Journal::whereIn('placement_id', $placementIds)->where('status', 'rejected')->count(),
             ];
+
+            $todayJournal = Journal::where('placement_id', $placement->id)
+                ->whereDate('logbook_date', $today)
+                ->first();
+
+            $latestJournalModel = Journal::where('placement_id', $placement->id)
+                ->orderByDesc('logbook_date')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($latestJournalModel) {
+                $supervisorName = $placement->fieldSupervisor?->name 
+                    ?? $placement->fieldSupervisor?->user?->name 
+                    ?? 'Instruktur';
+                $jDate = \Carbon\Carbon::parse($latestJournalModel->logbook_date);
+                $jDateFormatted = $jDate->day . ' ' . ($months[$jDate->month] ?? $jDate->format('M')) . ' ' . $jDate->year;
+
+                $latestJournal = [
+                    'id' => $latestJournalModel->id,
+                    'logbook_date' => $latestJournalModel->logbook_date?->toDateString() ?? $latestJournalModel->logbook_date,
+                    'formatted_date' => $jDateFormatted,
+                    'activity' => $latestJournalModel->activity ?? $latestJournalModel->description ?? '-',
+                    'status' => $latestJournalModel->status,
+                    'verification_note' => $latestJournalModel->verification_note,
+                    'supervisor_name' => $supervisorName,
+                ];
+            }
         }
 
         return $this->success([
-            'placement' => $placement ? new PlacementResource($placement->load(['location', 'period'])) : null,
+            'student' => [
+                'id' => $student?->id,
+                'name' => $student?->name ?? $user->name,
+                'nis' => $student?->nis ?? '-',
+                'class' => $student?->class ?? 'XII RPL 1',
+                'major' => $student?->major ?? 'Rekayasa Perangkat Lunak',
+                'school_name' => 'SMKN 2 Bandar Lampung',
+            ],
+            'placement' => $placement ? new PlacementResource($placement) : null,
             'attendance_today' => $todayAttendance ? new AttendanceResource($todayAttendance) : null,
+            'attendance_stats' => $attendanceStats,
+            'journal_today' => $todayJournal ? new JournalResource($todayJournal) : null,
             'journal_stats' => $journalStats,
+            'latest_journal' => $latestJournal,
+            'pkl_progress' => $pklProgress,
         ]);
     }
 
@@ -402,14 +517,23 @@ class StudentController extends Controller
     public function getProject(Request $request): JsonResponse
     {
         $student = $request->user()->student;
-        $placement = $student?->activePlacement();
+        if (!$student) {
+            return $this->success([
+                'projects' => [],
+                'submission' => null,
+            ]);
+        }
 
-        if (!$placement) {
-            return $this->error('Siswa belum memiliki penempatan PKL aktif.', 404);
+        $placementIds = $student->placements()->pluck('id')->toArray();
+        if (empty($placementIds)) {
+            return $this->success([
+                'projects' => [],
+                'submission' => null,
+            ]);
         }
 
         $submissions = ProjectSubmission::with(['reviews.reviewer'])
-            ->where('placement_id', $placement->id)
+            ->whereIn('placement_id', $placementIds)
             ->latest('id')
             ->get();
 
@@ -442,7 +566,11 @@ class StudentController extends Controller
     public function saveProject(Request $request): JsonResponse
     {
         $student = $request->user()->student;
-        $placement = $student?->activePlacement();
+        if (!$student) {
+            return $this->error('Data profil siswa tidak ditemukan.', 422);
+        }
+
+        $placement = $student->activePlacement() ?? $student->placements()->latest()->first();
 
         if (!$placement) {
             return $this->error('Siswa belum memiliki penempatan PKL aktif.', 422);
@@ -455,13 +583,23 @@ class StudentController extends Controller
             'plan' => 'nullable|string',
             'result' => 'nullable|string',
             'status' => 'nullable|string|in:draft,pending,submitted,approved,revision',
-            'document' => 'nullable|file|mimes:pdf|max:15360',
+            'document' => 'nullable|file|max:15360',
             'document_name' => 'nullable|string|max:255',
             'document_size' => 'nullable|integer',
         ]);
 
+        if ($request->hasFile('document')) {
+            $file = $request->file('document');
+            $ext = strtolower($file->getClientOriginalExtension());
+            $mime = strtolower($file->getMimeType());
+            if ($ext !== 'pdf' && !str_contains($mime, 'pdf') && $mime !== 'application/octet-stream') {
+                return $this->error('Berkas dokumen harus berupa file PDF.', 422);
+            }
+        }
+
+        $placementIds = $student->placements()->pluck('id')->toArray();
         if ($request->filled('id') && (int)$request->input('id') > 0) {
-            $submission = ProjectSubmission::where('placement_id', $placement->id)->findOrFail((int)$request->input('id'));
+            $submission = ProjectSubmission::whereIn('placement_id', $placementIds)->findOrFail((int)$request->input('id'));
         } else {
             $submission = new ProjectSubmission();
             $submission->placement_id = $placement->id;
@@ -485,11 +623,14 @@ class StudentController extends Controller
         }
 
         $requestedStatus = strtolower($request->input('status', 'draft'));
-        if (in_array($requestedStatus, ['submitted', 'pending'])) {
+        if (in_array($requestedStatus, ['submitted', 'pending', 'revision', 'approved'])) {
             $submission->status = 'pending';
             $submission->submitted_at = now();
         } elseif ($requestedStatus === 'draft') {
             $submission->status = 'draft';
+        } else {
+            $submission->status = 'pending';
+            $submission->submitted_at = now();
         }
 
         $submission->save();
@@ -498,11 +639,14 @@ class StudentController extends Controller
         $data = $submission->toArray();
         $data['document_url'] = $submission->document_path ? asset('storage/' . $submission->document_path) : null;
         $data['reviews'] = $submission->reviews->map(function ($r) {
+            $role = $r->reviewer?->role;
             return [
                 'id' => $r->id,
                 'decision' => $r->decision,
                 'note' => $r->note,
                 'reviewer_name' => $r->reviewer?->name,
+                'reviewer_role' => $role,
+                'reviewer_role_label' => $role === 'teacher' ? 'Guru Pembimbing Sekolah' : 'Pembimbing Lapangan (DU/DI)',
                 'created_at' => $r->created_at?->toIso8601String(),
             ];
         });
@@ -510,7 +654,7 @@ class StudentController extends Controller
         return $this->success(
             $data,
             $submission->status === 'pending'
-                ? 'Projek berhasil diajukan dan sedang menunggu verifikasi pembimbing DU/DI.'
+                ? 'Projek berhasil disimpan & diajukan untuk verifikasi!'
                 : 'Draf projek berhasil disimpan.',
             200
         );
@@ -519,14 +663,17 @@ class StudentController extends Controller
     public function getProjectHistory(Request $request): JsonResponse
     {
         $student = $request->user()->student;
-        $placement = $student?->activePlacement();
+        if (!$student) {
+            return $this->success([], 'Belum ada riwayat projek.');
+        }
 
-        if (!$placement) {
-            return $this->error('Siswa belum memiliki penempatan PKL aktif.', 404);
+        $placementIds = $student->placements()->pluck('id')->toArray();
+        if (empty($placementIds)) {
+            return $this->success([], 'Belum ada riwayat projek.');
         }
 
         $submission = ProjectSubmission::with(['reviews.reviewer'])
-            ->where('placement_id', $placement->id)
+            ->whereIn('placement_id', $placementIds)
             ->latest('id')
             ->first();
 

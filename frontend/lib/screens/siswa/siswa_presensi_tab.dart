@@ -1849,39 +1849,6 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
             color: const Color(0xFF16A34A),
             onPressed: () {},
           )
-        else if (!isMasuk && !hasCheckedIn) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFECACA)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, color: Color(0xFFDC2626), size: 20),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Anda belum tercatat melakukan presensi masuk hari ini. Jika baru saja check-in, ketuk Muat Ulang status.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => _loadPlacementAndDashboard(),
-                  child: const Text('Refresh', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                ),
-              ],
-            ),
-          ),
-          CustomButton(
-            text: 'Presensi Masuk Diperlukan Terlebih Dahulu',
-            icon: Icons.refresh_rounded,
-            color: const Color(0xFF94A3B8),
-            onPressed: () => _loadPlacementAndDashboard(),
-          ),
-        ]
         else if (isBeforePulang)
           CustomButton(
             text: 'Belum Waktunya Pulang (Mulai $_checkOutTimeString WIB)',

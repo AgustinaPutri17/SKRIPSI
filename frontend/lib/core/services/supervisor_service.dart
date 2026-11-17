@@ -25,7 +25,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/dashboard');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -43,7 +43,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/students');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -64,7 +64,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/students/$id');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -142,7 +142,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/locations');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -163,7 +163,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/locations/$id');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -316,7 +316,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/logbooks?$query');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -337,7 +337,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/logbooks/$id');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -437,7 +437,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/projects');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -458,7 +458,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/projects/$id');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -519,7 +519,7 @@ class SupervisorService {
     final url = Uri.parse('${AuthService.baseUrl}/supervisor/attendances$query');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);

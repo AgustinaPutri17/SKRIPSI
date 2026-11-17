@@ -3823,7 +3823,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
 
   // ── MODAL: TAMBAH PENEMPATAN SISWA (placements) ──
   void _showTambahPenempatanModal() {
-    int? selectedStudentId = _students.isNotEmpty ? _students.first['id'] as int? : null;
+    List<int> selectedStudentIds = [];
     int? selectedLocationId = _locations.isNotEmpty ? _locations.first['id'] as int? : null;
     int? selectedTeacherId = _teachers.isNotEmpty ? _teachers.first['id'] as int? : null;
     int? selectedSupervisorId;
@@ -3834,6 +3834,242 @@ class AdminMasterTabState extends State<AdminMasterTab> {
     String status = 'active';
 
     final messenger = ScaffoldMessenger.of(context);
+
+    Future<void> openSelectStudentsSheet(BuildContext context, StateSetter parentSetState) async {
+      String searchQuery = '';
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetCtx) => StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            final filteredStudents = _students.where((s) {
+              final name = (s['name'] ?? '').toString().toLowerCase();
+              final nis = (s['nis'] ?? '').toString().toLowerCase();
+              final q = searchQuery.toLowerCase().trim();
+              if (q.isEmpty) return true;
+              return name.contains(q) || nis.contains(q);
+            }).toList();
+
+            final allFilteredSelected = filteredStudents.isNotEmpty &&
+                filteredStudents.every((s) => selectedStudentIds.contains(s['id']));
+
+            return Container(
+              height: MediaQuery.of(sheetCtx).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 16,
+                left: 16,
+                right: 16,
+                top: 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(4)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F2FE),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.group_outlined, size: 20, color: Color(0xFF0284C7)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Pilih Siswa PKL',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                            ),
+                            Text(
+                              '${selectedStudentIds.length} siswa dipilih (Bisa pilih lebih dari 1)',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(sheetCtx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Search Bar
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama atau NIS siswa...',
+                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF64748B)),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 18),
+                              onPressed: () => setDialogState(() => searchQuery = ''),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0D9488), width: 1.5),
+                      ),
+                    ),
+                    onChanged: (val) => setDialogState(() => searchQuery = val),
+                  ),
+                  const SizedBox(height: 10),
+                  // Select All / Deselect All Action Bar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          setDialogState(() {
+                            if (allFilteredSelected) {
+                              for (var s in filteredStudents) {
+                                selectedStudentIds.remove(s['id']);
+                              }
+                            } else {
+                              for (var s in filteredStudents) {
+                                final sid = s['id'] as int;
+                                if (!selectedStudentIds.contains(sid)) {
+                                  selectedStudentIds.add(sid);
+                                }
+                              }
+                            }
+                          });
+                          parentSetState(() {});
+                        },
+                        icon: Icon(
+                          allFilteredSelected ? Icons.deselect_rounded : Icons.select_all_rounded,
+                          size: 18,
+                          color: const Color(0xFF0D9488),
+                        ),
+                        label: Text(
+                          allFilteredSelected ? 'Batalkan Semua' : 'Pilih Semua (${filteredStudents.length})',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0D9488)),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      if (selectedStudentIds.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setDialogState(() => selectedStudentIds.clear());
+                            parentSetState(() {});
+                          },
+                          child: const Text(
+                            'Reset Pilihan',
+                            style: TextStyle(fontSize: 12, color: Colors.red),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  // Students List
+                  Expanded(
+                    child: filteredStudents.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Tidak ada siswa yang cocok',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: filteredStudents.length,
+                            separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            itemBuilder: (c, idx) {
+                              final s = filteredStudents[idx];
+                              final sid = s['id'] as int;
+                              final name = (s['name'] ?? 'Siswa').toString();
+                              final nis = (s['nis'] ?? '-').toString();
+                              final className = (s['class'] ?? s['kelas'] ?? '').toString();
+                              final isSelected = selectedStudentIds.contains(sid);
+
+                              return CheckboxListTile(
+                                value: isSelected,
+                                activeColor: const Color(0xFF0D9488),
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                                title: Text(
+                                  name,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                    fontSize: 13,
+                                    color: isSelected ? const Color(0xFF0D9488) : const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  nis + (className.isNotEmpty ? ' • $className' : ''),
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                ),
+                                onChanged: (val) {
+                                  setDialogState(() {
+                                    if (val == true) {
+                                      if (!selectedStudentIds.contains(sid)) selectedStudentIds.add(sid);
+                                    } else {
+                                      selectedStudentIds.remove(sid);
+                                    }
+                                  });
+                                  parentSetState(() {});
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Confirm button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        parentSetState(() {});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D9488),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Simpan Pilihan (${selectedStudentIds.length} Siswa)',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    }
 
     showModalBottomSheet(
       context: context,
@@ -3906,33 +4142,126 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                   ),
                   const Divider(height: 24),
 
-                  // 1. Pilih Siswa
-                  const Text('Pilih Siswa PKL *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        isExpanded: true,
-                        value: selectedStudentId,
-                        hint: const Text('Pilih Siswa', style: TextStyle(fontSize: 13)),
-                        items: _students.map<DropdownMenuItem<int>>((s) {
-                          final id = s['id'] as int;
-                          final name = (s['name'] ?? 'Siswa').toString();
-                          final nis = (s['nis'] ?? '-').toString();
-                          return DropdownMenuItem<int>(
-                            value: id,
-                            child: Text('$name ($nis)', style: const TextStyle(fontSize: 13)),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setModalState(() => selectedStudentId = val);
-                        },
+                  // 1. Pilih Siswa (Bisa Lebih Dari 1)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Pilih Siswa PKL *',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                       ),
+                      if (selectedStudentIds.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCCFBF1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${selectedStudentIds.length} Siswa Terpilih',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F766E)),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => openSelectStudentsSheet(context, setModalState),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selectedStudentIds.isNotEmpty ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
+                          width: selectedStudentIds.isNotEmpty ? 1.5 : 1.0,
+                        ),
+                        color: selectedStudentIds.isNotEmpty ? const Color(0xFFF0FDFA) : Colors.white,
+                      ),
+                      child: selectedStudentIds.isEmpty
+                          ? const Row(
+                              children: [
+                                Icon(Icons.group_add_rounded, size: 18, color: Color(0xFF64748B)),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Ketuk untuk memilih siswa (Bisa pilih sekaligus)...',
+                                    style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF0D9488)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${selectedStudentIds.length} siswa akan ditempatkan bersama',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F766E)),
+                                      ),
+                                    ),
+                                    const Text('Ubah', style: TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    ...selectedStudentIds.take(5).map((sid) {
+                                      final s = _students.firstWhere((item) => item['id'] == sid, orElse: () => {'name': 'ID $sid'});
+                                      final name = (s['name'] ?? 'Siswa').toString();
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: const Color(0xFF99F6E4)),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF134E4A)),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap: () {
+                                                setModalState(() {
+                                                  selectedStudentIds.remove(sid);
+                                                });
+                                              },
+                                              child: const Icon(Icons.close_rounded, size: 12, color: Color(0xFF0F766E)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    if (selectedStudentIds.length > 5)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE2E8F0),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '+${selectedStudentIds.length - 5} lainnya',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -4190,9 +4519,9 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        if (selectedStudentId == null || selectedLocationId == null || selectedTeacherId == null) {
+                        if (selectedStudentIds.isEmpty || selectedLocationId == null || selectedTeacherId == null) {
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('Harap pilih Siswa, Mitra DU/DI, dan Guru Pembimbing!')),
+                            const SnackBar(content: Text('Harap pilih minimal 1 Siswa, Mitra DU/DI, dan Guru Pembimbing!')),
                           );
                           return;
                         }
@@ -4203,11 +4532,11 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                         // PANGGILAN API BACKEND: 4.8 Master Data Penempatan Siswa (POST)
                         // Endpoint: POST /api/admin/placements
                         // Controller: App\Http\Controllers\Api\Admin\PlacementController@store
-                        // Body: student_id, location_id, period_id, teacher_id, field_supervisor_id, start_date, end_date, status
-                        // Deskripsi: Menempatkan siswa pada lokasi PKL dengan validasi agar siswa tidak memiliki lebih dari 1 penempatan aktif
+                        // Body: student_ids, location_id, period_id, teacher_id, field_supervisor_id, start_date, end_date, status
+                        // Deskripsi: Menempatkan siswa pada lokasi PKL (bisa lebih dari 1 siswa sekaligus)
                         // ========================================================================
                         final res = await AdminService.createPlacement(
-                          studentId: selectedStudentId!,
+                          studentIds: selectedStudentIds,
                           locationId: selectedLocationId!,
                           periodId: selectedPeriodId ?? 1,
                           teacherId: selectedTeacherId!,
@@ -4242,12 +4571,17 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.assignment_turned_in_rounded, size: 18),
-                          SizedBox(width: 8),
-                          Text('Simpan Penempatan Siswa', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          const Icon(Icons.assignment_turned_in_rounded, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            selectedStudentIds.length > 1
+                                ? 'Simpan Penempatan (${selectedStudentIds.length} Siswa)'
+                                : 'Simpan Penempatan Siswa',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                          ),
                         ],
                       ),
                     ),

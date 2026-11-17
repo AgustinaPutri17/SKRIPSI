@@ -81,13 +81,9 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
         setState(() {
           _projects = loadedProjects;
         });
-      } else if (mounted) {
-        setState(() {
-          _projects = [];
-        });
       }
     } catch (_) {
-      // Backend error
+      // Backend error / timeout
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -221,43 +217,65 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
       );
 
       if (mounted) {
-        setState(() {
-          _isCreating = false;
-          _editingProjectId = null;
-          _namaDescController.clear();
-          _planningController.clear();
-          _pelaksanaanController.clear();
-          _selectedFilePath = null;
-          _selectedFileName = null;
-        });
+        if (response['success'] == true) {
+          final returnedData = response['data'];
+          setState(() {
+            _isCreating = false;
+            _editingProjectId = null;
+            _namaDescController.clear();
+            _planningController.clear();
+            _pelaksanaanController.clear();
+            _selectedFilePath = null;
+            _selectedFileName = null;
 
-        await _loadProjectsData();
+            if (returnedData is Map) {
+              final projMap = Map<String, dynamic>.from(returnedData);
+              final pId = projMap['id'];
+              final idx = _projects.indexWhere((p) => p['id'] == pId);
+              if (idx >= 0) {
+                _projects[idx] = projMap;
+              } else {
+                _projects.insert(0, projMap);
+              }
+            }
+          });
 
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 28),
-                SizedBox(width: 10),
-                Text('Projek Terkirim!', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          await _loadProjectsData();
+
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 28),
+                  SizedBox(width: 10),
+                  Text('Projek Terkirim!', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                ],
+              ),
+              content: Text(
+                response['message']?.toString() ??
+                    'Projek dan berkas PDF berhasil diajukan dan sedang menunggu verifikasi serta catatan dari Pembimbing DU/DI!',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+                ),
               ],
             ),
-            content: Text(
-              response['message']?.toString() ??
-                  'Projek dan berkas PDF berhasil diajukan dan sedang menunggu verifikasi serta catatan dari Pembimbing DU/DI!',
-              style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message']?.toString() ?? 'Gagal mengajukan projek.'),
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
-              ),
-            ],
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

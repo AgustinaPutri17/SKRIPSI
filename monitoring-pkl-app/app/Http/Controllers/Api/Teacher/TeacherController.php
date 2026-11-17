@@ -303,7 +303,13 @@ class TeacherController extends Controller
         $placementIds = $this->getTeacherPlacementIds($request);
         $today = now()->toDateString();
 
-        $totalStudents = Placement::whereIn('id', $placementIds)->where('status', 'active')->count();
+        $activePlacements = Placement::with(['student.user', 'location'])
+            ->whereIn('id', $placementIds)
+            ->where('status', 'active')
+            ->get();
+
+        $totalStudents = $activePlacements->count();
+        $dudiCount = $activePlacements->pluck('location_id')->unique()->filter()->count();
 
         $attendanceToday = Attendance::whereIn('placement_id', $placementIds)
             ->where('attendance_date', $today)
@@ -331,12 +337,144 @@ class TeacherController extends Controller
             ->where('status', 'submitted')
             ->count();
 
+        // 1. Rata-rata Kehadiran Bulan Ini
+        $monthStart = now()->startOfMonth()->toDateString();
+        $monthEnd = now()->endOfMonth()->toDateString();
+        $totalMonthlyRecords = Attendance::whereIn('placement_id', $placementIds)
+            ->whereBetween('attendance_date', [$monthStart, $monthEnd])
+            ->count();
+        $presentMonthlyRecords = Attendance::whereIn('placement_id', $placementIds)
+            ->whereBetween('attendance_date', [$monthStart, $monthEnd])
+            ->whereIn('status', ['present', 'late'])
+            ->count();
+        $monthlyAttendanceRate = $totalMonthlyRecords > 0 ? (int) round(($presentMonthlyRecords / $totalMonthlyRecords) * 100) : 0;
+
+        // 2. Kehadiran Minggu Ini (Senin s/d Jumat)
+        $startOfWeek = now()->startOfWeek();
+        $weeklyAttendance = [];
+        $dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum'];
+        for ($i = 0; $i < 5; $i++) {
+            $dayDate = $startOfWeek->copy()->addDays($i)->toDateString();
+            $isFuture = $dayDate > $today;
+            $count = $isFuture ? null : Attendance::whereIn('placement_id', $placementIds)
+                ->where('attendance_date', $dayDate)
+                ->whereIn('status', ['present', 'late'])
+                ->count();
+            $weeklyAttendance[] = [
+                'day' => $dayNames[$i],
+                'date' => $dayDate,
+                'count' => $count,
+                'total' => $totalStudents,
+                'is_today' => $dayDate === $today,
+                'is_future' => $isFuture,
+            ];
+        }
+
+        // 3. Item "Perlu Perhatian"
+        $attentionItems = [];
+        $attendedPlacementIdsToday = Attendance::whereIn('placement_id', $placementIds)
+            ->where('attendance_date', $today)
+            ->pluck('placement_id')
+            ->toArray();
+
+        $currentTime = now();
+        foreach ($activePlacements as $p) {
+            if (!in_array($p->id, $attendedPlacementIdsToday)) {
+                $checkInTimeStr = $p->location?->check_in_time ? substr($p->location->check_in_time, 0, 5) : '08:00';
+                $limitTime = \Carbon\Carbon::parse($today . ' ' . $checkInTimeStr);
+                // Siswa belum absen masuk dan telah melewati batas jam masuk
+                if ($currentTime->gt($limitTime)) {
+                    $attentionItems[] = [
+                        'type' => 'late_unattended',
+                        'student_id' => $p->student_id,
+                        'student_name' => $p->student?->user?->name ?? 'Siswa',
+                        'student_phone' => $p->student?->phone ?? $p->student?->user?->phone,
+                        'location_name' => $p->location?->name ?? 'DU/DI',
+                        'check_in_limit' => $checkInTimeStr,
+                        'message' => "Belum absen masuk · lewat batas {$checkInTimeStr}",
+                        'action' => 'hubungi',
+                    ];
+                }
+            }
+        }
+
+        // Pengajuan izin/sakit yang menunggu persetujuan
+        $pendingLeaves = LeaveRequest::with(['placement.student.user'])
+            ->whereIn('placement_id', $placementIds)
+            ->where('status', 'pending')
+            ->latest()
+            ->take(5)
+            ->get();
+        foreach ($pendingLeaves as $l) {
+            $attentionItems[] = [
+                'type' => 'pending_leave',
+                'id' => $l->id,
+                'student_name' => $l->placement?->student?->user?->name ?? 'Siswa',
+                'leave_type' => $l->type === 'sick' ? 'sakit' : 'izin',
+                'message' => 'Pengajuan ' . ($l->type === 'sick' ? 'sakit' : 'izin') . ' menunggu persetujuan',
+                'action' => 'tinjau',
+            ];
+        }
+
+        // Logbook yang belum diulas guru
+        if ($journalsPending > 0) {
+            $attentionItems[] = [
+                'type' => 'pending_logbooks',
+                'count' => $journalsPending,
+                'student_name' => "{$journalsPending} logbook belum diulas",
+                'message' => 'Menunggu catatan dan verifikasi guru pembimbing',
+                'action' => 'lihat',
+            ];
+        }
+
+        // 4. Aktivitas Terbaru
+        $recentActivities = Attendance::with(['placement.student.user', 'placement.location'])
+            ->whereIn('placement_id', $placementIds)
+            ->latest('attendance_date')
+            ->latest('check_in_at')
+            ->take(6)
+            ->get()
+            ->map(function ($a) {
+                $time = $a->check_in_at ? \Carbon\Carbon::parse($a->check_in_at)->format('H:i') . ' WIB' : 'Belum absen';
+                return [
+                    'id' => $a->id,
+                    'type' => 'attendance',
+                    'student_name' => $a->placement?->student?->user?->name ?? 'Siswa',
+                    'location_name' => $a->placement?->location?->name ?? 'DU/DI',
+                    'time' => $time,
+                    'date' => $a->attendance_date?->toDateString(),
+                    'status' => $a->status,
+                    'status_label' => $a->status === 'present' ? 'Hadir Tepat Waktu' : ($a->status === 'late' ? 'Terlambat' : 'Izin/Sakit'),
+                ];
+            });
+
+        // 5. Progres Logbook per Siswa
+        $studentLogbookProgress = $activePlacements->map(function ($p) {
+            $journals = Journal::where('placement_id', $p->id)->get();
+            return [
+                'student_id' => $p->student_id,
+                'student_name' => $p->student?->user?->name ?? 'Siswa',
+                'location_name' => $p->location?->name ?? 'DU/DI',
+                'total_filled' => $journals->count(),
+                'approved' => $journals->where('status', 'approved')->count(),
+                'rejected' => $journals->where('status', 'rejected')->count(),
+                'pending' => $journals->where('status', 'submitted')->count(),
+            ];
+        });
+
         return $this->success([
             'total_students' => $totalStudents,
+            'dudi_count' => $dudiCount,
             'attendance_today' => $attendanceToday,
             'leave_today' => $countIzinSakit,
             'leave_pending' => $leavePending,
             'journals_pending' => $journalsPending,
+            'unattended_today' => max(0, $totalStudents - $attendanceToday - $countIzinSakit),
+            'monthly_attendance_rate' => $monthlyAttendanceRate,
+            'weekly_attendance' => $weeklyAttendance,
+            'attention_items' => $attentionItems,
+            'recent_activities' => $recentActivities,
+            'student_logbook_progress' => $studentLogbookProgress,
         ]);
     }
 
@@ -420,6 +558,7 @@ class TeacherController extends Controller
 
         $submissions = ProjectSubmission::with(['placement.student.user', 'placement.location', 'reviews.reviewer'])
             ->whereIn('placement_id', $placementIds)
+            ->where('status', '!=', 'draft')
             ->latest('updated_at')
             ->get();
 

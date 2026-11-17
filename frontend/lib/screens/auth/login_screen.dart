@@ -181,6 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             backgroundColor: const Color(0xFF16A34A),
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(milliseconds: 1200),
           ),
         );
 

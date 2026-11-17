@@ -15,7 +15,9 @@ class StorePlacementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'student_id' => ['required', 'exists:students,id'],
+            'student_id' => ['required_without:student_ids', 'nullable', 'exists:students,id'],
+            'student_ids' => ['required_without:student_id', 'nullable', 'array', 'min:1'],
+            'student_ids.*' => ['exists:students,id'],
             'location_id' => ['required', 'exists:locations,id'],
             'period_id' => ['required', 'exists:periods,id'],
             'teacher_id' => ['required', 'exists:teachers,id'],
@@ -35,19 +37,27 @@ class StorePlacementRequest extends FormRequest
             $status = $this->input('status', 'active');
 
             if ($status === 'active') {
-                $studentId = $this->input('student_id');
+                $studentIds = $this->input('student_ids');
+                if (empty($studentIds) && $this->filled('student_id')) {
+                    $studentIds = [$this->input('student_id')];
+                }
+                $studentIds = is_array($studentIds) ? $studentIds : [$studentIds];
                 $periodId = $this->input('period_id');
 
-                $conflict = Placement::where('student_id', $studentId)
-                    ->where('period_id', $periodId)
-                    ->where('status', 'active')
-                    ->exists();
+                foreach ($studentIds as $sid) {
+                    if (!$sid) continue;
+                    $conflict = Placement::where('student_id', $sid)
+                        ->where('period_id', $periodId)
+                        ->where('status', 'active')
+                        ->exists();
 
-                if ($conflict) {
-                    $validator->errors()->add(
-                        'student_id',
-                        'Siswa sudah memiliki penempatan aktif pada periode ini.'
-                    );
+                    if ($conflict) {
+                        $studentName = \App\Models\Student::find($sid)?->user?->name ?? "ID $sid";
+                        $validator->errors()->add(
+                            'student_ids',
+                            "Siswa '{$studentName}' sudah memiliki penempatan aktif pada periode ini."
+                        );
+                    }
                 }
             }
         });

@@ -135,12 +135,29 @@ class AttendanceService
             ->whereDate('attendance_date', $today)
             ->first();
 
-        if (!$attendance || !$attendance->hasCheckedIn()) {
-            throw new \Exception('Anda belum melakukan check-in hari ini.', 422);
+        if ($attendance && $attendance->hasCheckedOut()) {
+            throw new \Exception('Anda sudah melakukan check-out hari ini.', 422);
         }
 
-        if ($attendance->hasCheckedOut()) {
-            throw new \Exception('Anda sudah melakukan check-out hari ini.', 422);
+        // Jika belum check-in hari ini, buat/inisialisasi record absensi otomatis agar checkout tetap sukses
+        if (!$attendance) {
+            $attendance = Attendance::create([
+                'placement_id' => $placement->id,
+                'attendance_date' => $today,
+                'check_in_at' => now(),
+                'check_in_latitude' => $latitude,
+                'check_in_longitude' => $longitude,
+                'check_in_accuracy' => $accuracy,
+                'status' => 'present',
+                'notes' => 'Presensi keluar dicatat langsung.',
+            ]);
+        } elseif (!$attendance->hasCheckedIn()) {
+            $attendance->update([
+                'check_in_at' => now(),
+                'check_in_latitude' => $latitude,
+                'check_in_longitude' => $longitude,
+                'check_in_accuracy' => $accuracy,
+            ]);
         }
 
         // Validasi jam pulang: siswa baru bisa absen pulang jika sudah memasuki check_out_time DU/DI

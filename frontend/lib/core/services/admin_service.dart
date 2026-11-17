@@ -979,7 +979,8 @@ class AdminService {
   /// Body: student_id, location_id, period_id, teacher_id, field_supervisor_id, start_date, end_date, status
   /// ============================================================================
   static Future<Map<String, dynamic>> createPlacement({
-    required int studentId,
+    int? studentId,
+    List<int>? studentIds,
     required int locationId,
     required int periodId,
     required int teacherId,
@@ -992,7 +993,8 @@ class AdminService {
       final url = Uri.parse('${AuthService.baseUrl}/admin/placements');
       final headers = await _getHeaders();
       final body = <String, dynamic>{
-        'student_id': studentId,
+        if (studentIds != null && studentIds.isNotEmpty) 'student_ids': studentIds,
+        if (studentId != null) 'student_id': studentId,
         'location_id': locationId,
         'period_id': periodId,
         'teacher_id': teacherId,
@@ -1008,7 +1010,7 @@ class AdminService {
         url,
         headers: headers,
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 6));
+      ).timeout(const Duration(seconds: 15));
 
       final data = jsonDecode(response.body);
       if (response.statusCode >= 200 && response.statusCode < 300) {

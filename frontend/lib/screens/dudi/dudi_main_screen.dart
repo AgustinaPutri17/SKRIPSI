@@ -59,6 +59,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   final Map<String, double> _studentScores = {};
 
   final String _selectedLogbookFilter = 'all'; // 'all', 'submitted', 'approved', 'rejected'
+  int _studentAttendanceFilter = 0; // 0: Semua, 1: Hadir, 2: Belum Hadir
 
   @override
   void initState() {
@@ -265,16 +266,59 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
   // ============================================================================
   Widget _buildBerandaTab() {
     final companyName = _locations.isNotEmpty
-        ? (_locations.first['name'] ?? 'PT Solusi Teknologi Mandiri')
-        : 'PT Solusi Teknologi Mandiri';
+        ? (_locations.first['name'] ?? 'Mitra DU/DI')
+        : (_currentUser?['organization'] ?? 'Mitra DU/DI');
 
-    final supervisorName = _currentUser?['name']?.toString() ?? 'Hendra Wijaya, S.T.';
+    final supervisorName = _currentUser?['name']?.toString() ?? 'Instruktur Lapangan';
 
-    final totalStudents = _dashboardData?['total_students']?.toString() ?? (_students.isNotEmpty ? '${_students.length}' : '8');
-    final attendanceToday = _dashboardData?['attendance_today']?.toString() ?? '8';
-    final logbookPending = _dashboardData?['journals_pending']?.toString() ?? (_logbooks.where((l) => l['status'] == 'submitted').length.toString());
+    // 100% Real DB stats, no fake fallback
+    final totalStudentsNum = (_dashboardData?['total_students'] as num?)?.toInt() ?? _students.length;
+    final totalStudents = totalStudentsNum.toString();
 
-    final radius = _locations.isNotEmpty ? '${_locations.first['radius'] ?? 50} m' : '50 m';
+    final attendanceTodayNum = (_dashboardData?['attendance_today'] as num?)?.toInt() ?? 0;
+    final attendanceToday = attendanceTodayNum.toString();
+
+    final unattendedCountNum = (_dashboardData?['unattended_today_count'] as num?)?.toInt() ?? (totalStudentsNum - attendanceTodayNum);
+    final unattendedCount = unattendedCountNum < 0 ? '0' : unattendedCountNum.toString();
+
+    final attendanceRate = (_dashboardData?['attendance_rate'] as num?)?.toInt().toString() ?? '0';
+    final onTimeRate = (_dashboardData?['on_time_rate'] as num?)?.toInt().toString() ?? '100';
+
+    // Strictly filter submitted logbooks for the pending queue (NO approved logbooks in pending!)
+    final pendingLogbooks = _logbooks
+        .where((l) => (l['status'] ?? '').toString().toLowerCase() == 'submitted')
+        .toList();
+    final logbookPending = (_dashboardData?['journals_pending'] as num?)?.toInt().toString() ?? pendingLogbooks.length.toString();
+
+    // Assessment Summary
+    final assessmentSummary = _dashboardData?['assessment_summary'] as Map<String, dynamic>?;
+    final gradedCount = (assessmentSummary?['graded_count'] as num?)?.toInt() ?? _students.where((s) => s['dudi_score'] != null).length;
+    final ungradedCount = (assessmentSummary?['ungraded_count'] as num?)?.toInt() ?? (totalStudentsNum - gradedCount);
+    final avgScore = assessmentSummary?['average_score']?.toString();
+
+    // Students Today List
+    final List<dynamic> todayStudentsRaw = _dashboardData?['students_today'] is List
+        ? (_dashboardData!['students_today'] as List)
+        : _students.map((s) => {
+            'placement_id': s['placement_id'],
+            'student_id': s['id'],
+            'name': s['name'],
+            'nis': s['nis'],
+            'class': s['class'],
+            'is_present': false,
+            'status': 'belum_hadir',
+            'status_label': 'Belum Hadir',
+            'check_in_time': null,
+            'check_out_time': null,
+            'is_late': false,
+          }).toList();
+
+    final filteredTodayStudents = todayStudentsRaw.where((item) {
+      final isPresent = item['is_present'] == true;
+      if (_studentAttendanceFilter == 1) return isPresent;
+      if (_studentAttendanceFilter == 2) return !isPresent;
+      return true;
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -316,64 +360,41 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 14),
 
+                      // Compact Location Warning Alert (Hanya jika koordinat GPS belum ditentukan)
                       if (_locations.isNotEmpty &&
                           (_locations.first['latitude'] == null || _locations.first['longitude'] == null)) ...[
                         Container(
-                          margin: const EdgeInsets.only(bottom: 18),
-                          padding: const EdgeInsets.all(14),
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: const Color(0xFFFCD34D)),
                           ),
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD97706).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
+                              const Icon(Icons.location_off_rounded, color: Color(0xFFD97706), size: 18),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'Titik lokasi GPS kantor belum diatur.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF92400E),
+                                  ),
                                 ),
-                                child: const Icon(Icons.location_off_rounded, color: Color(0xFFD97706), size: 22),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Titik Lokasi Kantor Belum Disetel!',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF92400E),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    const Text(
-                                      'Admin belum menentukan koordinat kantor. Buka menu Lokasi dan gunakan GPS HP agar siswa dapat presensi.',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFF78350F), height: 1.35),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    ElevatedButton.icon(
-                                      onPressed: () => _onTabTapped(3),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFD97706),
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                        minimumSize: Size.zero,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      icon: const Icon(Icons.my_location_rounded, size: 14),
-                                      label: const Text('Ambil Lokasi GPS Sekarang', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                                    ),
-                                  ],
+                              InkWell(
+                                onTap: _openLokasiSetting,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: Text(
+                                    'Atur Lokasi',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                                  ),
                                 ),
                               ),
                             ],
@@ -381,7 +402,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                         ),
                       ],
 
-                      // Quick Stats 2x2 Grid Sesuai Desain
+                      // 1. Quick Stats 2x2 Grid (Database-driven)
                       Row(
                         children: [
                           _buildSummaryStat(
@@ -397,11 +418,11 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                           _buildSummaryStat(
                             'Presensi Masuk',
                             '$attendanceToday/$totalStudents',
-                            'Tepat Waktu',
+                            '$unattendedCount belum hadir',
                             Icons.how_to_reg_rounded,
                             const Color(0xFF16A34A),
                             const Color(0xFFDCFCE7),
-                            onTap: () => _onTabTapped(1),
+                            onTap: () => setState(() => _studentAttendanceFilter = 1),
                           ),
                         ],
                       ),
@@ -409,112 +430,78 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                       Row(
                         children: [
                           _buildSummaryStat(
+                            'Rata-rata Hadir',
+                            '$attendanceRate%',
+                            '$onTimeRate% tepat waktu',
+                            Icons.insights_rounded,
+                            const Color(0xFF0D9488),
+                            const Color(0xFFCCFBF1),
+                          ),
+                          const SizedBox(width: 12),
+                          _buildSummaryStat(
                             'Logbook Pending',
                             logbookPending,
-                            'Perlu ACC',
+                            'Perlu Validasi',
                             Icons.pending_actions_rounded,
                             const Color(0xFFD97706),
                             const Color(0xFFFEF3C7),
                             onTap: () => _onTabTapped(2),
                           ),
-                          const SizedBox(width: 12),
-                          _buildSummaryStat(
-                            'Projek Siswa',
-                            _projects.isNotEmpty ? '${_projects.length}' : '0',
-                            'Pengajuan',
-                            Icons.assignment_rounded,
-                            const Color(0xFF7C3AED),
-                            const Color(0xFFF3E8FF),
-                            onTap: () => _onTabTapped(3),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                      // Banner Setup Titik Lokasi
-                      InkWell(
-                        onTap: _openLokasiSetting,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.my_location_rounded, color: Colors.white, size: 24),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Pengaturan Titik Lokasi DUDI',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Radius saat ini: $radius • Atur koordinat GPS kantor.',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            ElevatedButton(
-                              onPressed: _openLokasiSetting,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF2563EB),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text('Kelola', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ),
+                      // 2. KARTU RINGKASAN PENILAIAN SISWA PKL
+                      _buildAssessmentSummaryCard(
+                        totalStudents: totalStudentsNum,
+                        gradedCount: gradedCount,
+                        ungradedCount: ungradedCount,
+                        avgScore: avgScore,
                       ),
-                    ),
                       const SizedBox(height: 20),
 
-                      // Logbook Verification Queue Header
+                      // 3. DAFTAR SISWA YANG HADIR & BELUM HADIR HARI INI
+                      _buildTodayAttendanceSection(
+                        totalStudents: totalStudents,
+                        attendanceToday: attendanceToday,
+                        unattendedCount: unattendedCount,
+                        students: filteredTodayStudents,
+                      ),
+                      const SizedBox(height: 22),
+
+                      // 4. LOGBOOK MENUNGGU VALIDASI (Strictly Submitted only)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Logbook Menunggu Validasi',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
+                          Row(
+                            children: [
+                              const Text(
+                                'Logbook Menunggu Validasi',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              if (pendingLogbooks.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${pendingLogbooks.length}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFFB45309),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           TextButton(
                             onPressed: () => _onTabTapped(2),
@@ -524,13 +511,13 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      // List Logbook Pending
+                      // List Logbook Pending (Filtered strictly submitted)
                       if (_isLoadingLogbooks)
                         const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
-                      else if (_logbooks.isEmpty)
-                        _buildEmptyState('Belum ada logbook siswa yang perlu diverifikasi.')
+                      else if (pendingLogbooks.isEmpty)
+                        _buildEmptyState('Tidak ada logbook menunggu validasi saat ini. Semua logbook sudah ditinjau ✓')
                       else
-                        ..._logbooks.take(3).map((j) => _buildLogbookItemCard(j)),
+                        ...pendingLogbooks.take(3).map((j) => _buildLogbookItemCard(j)),
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -539,6 +526,370 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// ── KARTU RINGKASAN PENILAIAN SISWA PKL ──
+  Widget _buildAssessmentSummaryCard({
+    required int totalStudents,
+    required int gradedCount,
+    required int ungradedCount,
+    String? avgScore,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.assignment_turned_in_rounded, size: 18, color: Color(0xFF2563EB)),
+                  ),
+                  const SizedBox(width: 10),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Penilaian Siswa PKL',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      ),
+                      Text(
+                        'Evaluasi & Nilai Akhir DU/DI',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () => _onTabTapped(1), // Ke tab Nilai PKL
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Row(
+                  children: [
+                    Text('Buka Nilai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+                    SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF2563EB)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$gradedCount dari $totalStudents Siswa Sudah Dinilai',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+              ),
+              if (avgScore != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Rata-rata: $avgScore',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: totalStudents > 0 ? (gradedCount / totalStudents).clamp(0.0, 1.0) : 0.0,
+              minHeight: 7,
+              color: const Color(0xFF2563EB),
+              backgroundColor: const Color(0xFFE2E8F0),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  ungradedCount > 0
+                      ? '$ungradedCount siswa belum diberi penilaian PKL.'
+                      : 'Semua siswa bimbingan telah dinilai lengkap ✓',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: ungradedCount > 0 ? const Color(0xFFD97706) : const Color(0xFF059669),
+                  ),
+                ),
+              ),
+              OutlinedButton(
+                onPressed: () => _onTabTapped(1),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2563EB),
+                  side: const BorderSide(color: Color(0xFF2563EB)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Input Nilai', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ── SEKSI PRESENSI SISWA HARI INI ──
+  Widget _buildTodayAttendanceSection({
+    required String totalStudents,
+    required String attendanceToday,
+    required String unattendedCount,
+    required List<dynamic> students,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Presensi Siswa Hari Ini',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$attendanceToday/$totalStudents Hadir',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Filter Segmented Chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildAttendanceFilterChip('Semua ($totalStudents)', 0),
+              const SizedBox(width: 8),
+              _buildAttendanceFilterChip('Hadir ($attendanceToday)', 1),
+              const SizedBox(width: 8),
+              _buildAttendanceFilterChip('Belum Hadir ($unattendedCount)', 2),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // List Siswa
+        if (students.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Center(
+              child: Text(
+                _studentAttendanceFilter == 1
+                    ? 'Belum ada siswa yang hadir hari ini.'
+                    : (_studentAttendanceFilter == 2
+                        ? 'Semua siswa sudah hadir hari ini 🎉'
+                        : 'Belum ada data siswa.'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+            ),
+          )
+        else
+          ...students.map((st) => _buildTodayStudentCard(st is Map<String, dynamic> ? st : Map<String, dynamic>.from(st as Map))),
+      ],
+    );
+  }
+
+  /// Chip Filter Presensi
+  Widget _buildAttendanceFilterChip(String label, int index) {
+    final isSelected = _studentAttendanceFilter == index;
+    return InkWell(
+      onTap: () => setState(() => _studentAttendanceFilter = index),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Kartu Presensi Siswa Hari Ini
+  Widget _buildTodayStudentCard(Map<String, dynamic> item) {
+    final name = (item['name'] ?? 'Siswa').toString();
+    final nis = (item['nis'] ?? '-').toString();
+    final className = (item['class'] ?? '-').toString();
+    final isPresent = item['is_present'] == true;
+    final isLate = item['is_late'] == true;
+    final checkInTime = item['check_in_time']?.toString();
+    final statusLabel = item['status_label']?.toString() ?? (isPresent ? 'Hadir' : 'Belum Hadir');
+
+    final initial = name.isNotEmpty
+        ? name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join('').toUpperCase()
+        : 'S';
+
+    Color badgeBg;
+    Color badgeText;
+    IconData badgeIcon;
+
+    if (isPresent) {
+      if (isLate) {
+        badgeBg = const Color(0xFFFEF3C7);
+        badgeText = const Color(0xFFB45309);
+        badgeIcon = Icons.schedule_rounded;
+      } else {
+        badgeBg = const Color(0xFFDCFCE7);
+        badgeText = const Color(0xFF15803D);
+        badgeIcon = Icons.check_circle_rounded;
+      }
+    } else {
+      final st = (item['status'] ?? '').toString();
+      if (st == 'sick' || st == 'permission') {
+        badgeBg = const Color(0xFFEFF6FF);
+        badgeText = const Color(0xFF1D4ED8);
+        badgeIcon = Icons.info_outline_rounded;
+      } else {
+        badgeBg = const Color(0xFFF1F5F9);
+        badgeText = const Color(0xFF64748B);
+        badgeIcon = Icons.radio_button_unchecked_rounded;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isPresent ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                initial,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isPresent ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'NIS: $nis • $className',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(badgeIcon, size: 12, color: badgeText),
+                const SizedBox(width: 4),
+                Text(
+                  isPresent && checkInTime != null
+                      ? (isLate ? 'Terlambat • $checkInTime' : 'Hadir • $checkInTime')
+                      : statusLabel,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: badgeText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
