@@ -1228,7 +1228,7 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
                 StatusPill(
                   text: isApproved
                       ? 'Disetujui'
-                       : (isRejected ? 'Ditolak' : 'Menunggu ACC'),
+                      : (isRejected ? 'Direvisi' : 'Menunggu ACC'),
                   style: isApproved
                       ? PillStyle.success
                       : (isRejected ? PillStyle.error : PillStyle.warning),

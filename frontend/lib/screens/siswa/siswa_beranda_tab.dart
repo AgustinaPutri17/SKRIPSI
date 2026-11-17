@@ -952,7 +952,7 @@ class _SiswaBerandaTabState extends State<SiswaBerandaTab> {
       case 'rejected':
         bg = const Color(0xFFFEE2E2);
         textColor = const Color(0xFF991B1B);
-        label = 'Ditolak';
+        label = 'Direvisi';
         break;
       case 'draft':
         bg = const Color(0xFFF1F5F9);

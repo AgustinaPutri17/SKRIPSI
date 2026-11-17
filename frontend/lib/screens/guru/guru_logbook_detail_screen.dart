@@ -673,7 +673,7 @@ class _GuruLogbookDetailScreenState extends State<GuruLogbookDetailScreen> {
                         ? const Icon(Icons.verified_rounded, size: 20, color: Color(0xFF16A34A))
                         : const Icon(Icons.schedule_rounded, size: 20, color: Color(0xFFD97706)));
                 final bannerTitle = isRejected
-                    ? 'Perlu Revisi / Ditolak oleh DUDI'
+                    ? 'Perlu Revisi dari DUDI'
                     : (isApproved ? 'Disetujui oleh Instruktur DUDI' : 'Menunggu Review Instruktur DUDI');
                 final bannerTitleColor = isRejected
                     ? const Color(0xFF991B1B)
