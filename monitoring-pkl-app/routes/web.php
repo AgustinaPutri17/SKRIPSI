@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 // Endpoint unduh langsung file APK untuk HP Android
 Route::get('/download-apk', function () {
     $path = public_path('pkl-monitoring.apk');
+    if (!file_exists($path)) {
+        $path = public_path('app-release.apk');
+    }
     if (file_exists($path)) {
         return response()->download($path, 'pkl-monitoring.apk', [
             'Content-Type' => 'application/vnd.android.package-archive',
@@ -15,6 +18,22 @@ Route::get('/download-apk', function () {
 
 Route::get('/pkl-monitoring.apk', function () {
     $path = public_path('pkl-monitoring.apk');
+    if (!file_exists($path)) {
+        $path = public_path('app-release.apk');
+    }
+    if (file_exists($path)) {
+        return response()->download($path, 'pkl-monitoring.apk', [
+            'Content-Type' => 'application/vnd.android.package-archive',
+        ]);
+    }
+    return response()->json(['error' => 'File APK belum tersedia di server.'], 404);
+});
+
+Route::get('/app-release.apk', function () {
+    $path = public_path('pkl-monitoring.apk');
+    if (!file_exists($path)) {
+        $path = public_path('app-release.apk');
+    }
     if (file_exists($path)) {
         return response()->download($path, 'pkl-monitoring.apk', [
             'Content-Type' => 'application/vnd.android.package-archive',

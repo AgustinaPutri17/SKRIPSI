@@ -29,4 +29,5 @@ Thumbs.db
 
 # Binaries & Tooling
 *.apk
+!monitoring-pkl-app/public/pkl-monitoring.apk
 cloudflared.exe
