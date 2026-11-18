@@ -254,19 +254,19 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.22),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF2563EB).withValues(alpha: 0.18),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -280,21 +280,21 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               const Text(
                 'Kehadiran Hari Ini',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Text(
                   'Berjalan',
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFFD97706),
                   ),
@@ -302,7 +302,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // Big Highlight Text: "X dari Y siswa sudah masuk"
           RichText(
@@ -311,7 +311,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                 TextSpan(
                   text: '$_attendanceToday ',
                   style: const TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                     letterSpacing: -0.4,
@@ -320,7 +320,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                 TextSpan(
                   text: 'dari $_totalStudents siswa sudah masuk',
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFDBEAFE),
                   ),
@@ -328,13 +328,13 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           // Horizontal Progress Bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(5),
             child: Container(
-              height: 5,
+              height: 4.5,
               color: Colors.white.withValues(alpha: 0.22),
               child: Row(
                 children: [
@@ -357,7 +357,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           // 3 Sub-stats under bar: Hadir | Izin/Sakit | Belum absen
           Row(

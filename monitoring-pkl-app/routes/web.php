@@ -13,7 +13,7 @@ Route::get('/download-apk', function () {
             'Content-Type' => 'application/vnd.android.package-archive',
         ]);
     }
-    return response()->json(['error' => 'File APK belum tersedia di server.'], 404);
+    return redirect('https://github.com/AgustinaPutri17/SKRIPSI/raw/main/monitoring-pkl-app/public/pkl-monitoring.apk');
 });
 
 Route::get('/pkl-monitoring.apk', function () {
@@ -26,7 +26,7 @@ Route::get('/pkl-monitoring.apk', function () {
             'Content-Type' => 'application/vnd.android.package-archive',
         ]);
     }
-    return response()->json(['error' => 'File APK belum tersedia di server.'], 404);
+    return redirect('https://github.com/AgustinaPutri17/SKRIPSI/raw/main/monitoring-pkl-app/public/pkl-monitoring.apk');
 });
 
 Route::get('/app-release.apk', function () {
@@ -39,7 +39,7 @@ Route::get('/app-release.apk', function () {
             'Content-Type' => 'application/vnd.android.package-archive',
         ]);
     }
-    return response()->json(['error' => 'File APK belum tersedia di server.'], 404);
+    return redirect('https://github.com/AgustinaPutri17/SKRIPSI/raw/main/monitoring-pkl-app/public/pkl-monitoring.apk');
 });
 
 // Sajikan file media storage publik secara langsung dengan CORS & MIME type yang tepat
