@@ -1608,8 +1608,8 @@ class _DudiLokasiScreenState extends State<DudiLokasiScreen> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          'Total Hari Kerja Wajib: ${_calculateWorkDays()} Hari (${_workDays == 'monday_saturday' ? '6 Hari/Minggu' : '5 Hari/Minggu'}). Data ini langsung terkirim ke Admin untuk menghitung nilai kehadiran (50%).',
-                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E40AF), height: 1.3),
+                                          'Total Hari Kerja: ${_calculateWorkDays()} Hari',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E40AF)),
                                         ),
                                       ),
                                     ],
