@@ -20,8 +20,8 @@ class ProjectPdfGenerator
         $statusRaw = strtolower($project->status ?? 'submitted');
         $statusLabel = match($statusRaw) {
             'approved' => 'Disetujui',
-            'revision', 'rejected' => 'Perlu Revisi',
-            default => 'Menunggu Verifikasi',
+            'revision', 'rejected' => 'Direvisi',
+            default => 'Menunggu',
         };
         $date = $project->submitted_at
             ? date('d F Y', strtotime($project->submitted_at))

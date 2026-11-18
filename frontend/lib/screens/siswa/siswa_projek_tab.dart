@@ -265,7 +265,7 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
               ),
               content: Text(
                 response['message']?.toString() ??
-                    'Projek dan berkas PDF berhasil diajukan dan sedang menunggu verifikasi serta catatan dari Pembimbing DU/DI!',
+                    'Projek dan berkas PDF berhasil diajukan dan sedang menunggu catatan dari Pembimbing DU/DI!',
                 style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
               ),
               actions: [

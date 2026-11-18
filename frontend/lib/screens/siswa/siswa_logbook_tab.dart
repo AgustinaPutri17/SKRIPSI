@@ -829,7 +829,7 @@ class _SiswaLogbookTabState extends State<SiswaLogbookTab> {
     } else if (status == 'submitted') {
       return const StatusPill(text: 'Menunggu', style: PillStyle.warning);
     } else if (status == 'rejected') {
-      return const StatusPill(text: 'Revisi', style: PillStyle.error);
+      return const StatusPill(text: 'Direvisi', style: PillStyle.error);
     }
     return const StatusPill(text: 'Draft', style: PillStyle.neutral);
   }
