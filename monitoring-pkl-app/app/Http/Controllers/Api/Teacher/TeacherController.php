@@ -301,7 +301,9 @@ class TeacherController extends Controller
     public function dashboard(Request $request): JsonResponse
     {
         $placementIds = $this->getTeacherPlacementIds($request);
-        $today = now()->toDateString();
+        $todayWib = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+        $todayUtc = \Carbon\Carbon::now('UTC')->toDateString();
+        $possibleDates = array_values(array_unique([$todayWib, $todayUtc]));
 
         $activePlacements = Placement::with(['student.user', 'location'])
             ->whereIn('id', $placementIds)
@@ -312,19 +314,34 @@ class TeacherController extends Controller
         $dudiCount = $activePlacements->pluck('location_id')->unique()->filter()->count();
 
         $attendanceToday = Attendance::whereIn('placement_id', $placementIds)
-            ->where('attendance_date', $today)
-            ->whereIn('status', ['present', 'late'])
+            ->where(function ($q) use ($possibleDates, $todayWib, $todayUtc) {
+                $q->whereIn('attendance_date', $possibleDates)
+                  ->orWhereDate('attendance_date', $todayWib)
+                  ->orWhereDate('attendance_date', $todayUtc)
+                  ->orWhereDate('check_in_at', $todayWib)
+                  ->orWhereDate('check_in_at', $todayUtc)
+                  ->orWhereDate('created_at', $todayWib)
+                  ->orWhereDate('created_at', $todayUtc);
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('check_in_at')
+                  ->orWhereIn('status', ['present', 'late', 'approved']);
+            })
             ->count();
 
         // Jumlah siswa izin/sakit hari ini (status excused di presensi ATAU permohonan izin yang aktif hari ini)
         $leaveTodayFromAttendance = Attendance::whereIn('placement_id', $placementIds)
-            ->where('attendance_date', $today)
+            ->where(function ($q) use ($possibleDates, $todayWib, $todayUtc) {
+                $q->whereIn('attendance_date', $possibleDates)
+                  ->orWhereDate('attendance_date', $todayWib)
+                  ->orWhereDate('attendance_date', $todayUtc);
+            })
             ->where('status', 'excused')
             ->count();
 
         $activeLeavesCount = LeaveRequest::whereIn('placement_id', $placementIds)
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
+            ->where('start_date', '<=', $todayWib)
+            ->where('end_date', '>=', $todayWib)
             ->count();
 
         $countIzinSakit = max($leaveTodayFromAttendance, $activeLeavesCount);

@@ -344,7 +344,9 @@ class SupervisorController extends Controller
     {
         $supervisor = $request->user()->fieldSupervisor;
         $placementIds = $this->getSupervisorPlacementIds($request);
-        $today = now()->toDateString();
+        $todayWib = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+        $todayUtc = \Carbon\Carbon::now('UTC')->toDateString();
+        $possibleDates = array_values(array_unique([$todayWib, $todayUtc]));
 
         $activePlacements = Placement::with(['student.user', 'assessment', 'location'])
             ->whereIn('id', $placementIds)
@@ -353,11 +355,19 @@ class SupervisorController extends Controller
 
         $totalStudents = $activePlacements->count();
 
-        // 1. Presensi Hari Ini per Siswa
+        // 1. Presensi Hari Ini per Siswa (Mencakup attendance_date WIB/UTC serta timestamp check_in_at & created_at)
         $todayAttendances = Attendance::whereIn('placement_id', $placementIds)
-            ->where('attendance_date', $today)
-            ->get()
-            ->keyBy('placement_id');
+            ->where(function ($q) use ($possibleDates, $todayWib, $todayUtc) {
+                $q->whereIn('attendance_date', $possibleDates)
+                  ->orWhereDate('attendance_date', $todayWib)
+                  ->orWhereDate('attendance_date', $todayUtc)
+                  ->orWhereDate('check_in_at', $todayWib)
+                  ->orWhereDate('check_in_at', $todayUtc)
+                  ->orWhereDate('created_at', $todayWib)
+                  ->orWhereDate('created_at', $todayUtc);
+            })
+            ->latest('id')
+            ->get();
 
         $studentsAttendance = [];
         $presentTodayCount = 0;
@@ -365,8 +375,8 @@ class SupervisorController extends Controller
 
         foreach ($activePlacements as $p) {
             $student = $p->student;
-            $att = $todayAttendances->get($p->id);
-            $isPresent = !empty($att?->check_in_at);
+            $att = $todayAttendances->first(fn($a) => (int)$a->placement_id === (int)$p->id);
+            $isPresent = $att && (!empty($att->check_in_at) || in_array($att->status, ['present', 'late', 'approved']));
             $isLate = $att?->status === 'late';
             if ($isPresent) {
                 $presentTodayCount++;
@@ -374,10 +384,10 @@ class SupervisorController extends Controller
             }
 
             $checkInTimeFormatted = $att?->check_in_at 
-                ? \Carbon\Carbon::parse($att->check_in_at)->format('H:i') . ' WIB' 
+                ? \Carbon\Carbon::parse($att->check_in_at)->timezone('Asia/Jakarta')->format('H:i') . ' WIB' 
                 : null;
             $checkOutTimeFormatted = $att?->check_out_at 
-                ? \Carbon\Carbon::parse($att->check_out_at)->format('H:i') . ' WIB' 
+                ? \Carbon\Carbon::parse($att->check_out_at)->timezone('Asia/Jakarta')->format('H:i') . ' WIB' 
                 : null;
 
             $statusLabel = 'Belum Hadir';
