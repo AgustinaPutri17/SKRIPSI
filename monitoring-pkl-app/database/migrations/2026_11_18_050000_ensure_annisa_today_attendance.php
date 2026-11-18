@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -13,10 +14,17 @@ return new class extends Migration
     public function up(): void
     {
         try {
-            // 1. Pastikan password guru gina1234 dan dudi sofia123 dapat login
+            // 0. Jika database baru pertama kali dibuat dan tabel users masih kosong, seed data awal
+            if (Schema::hasTable('users') && DB::table('users')->count() === 0) {
+                Artisan::call('db:seed', ['--force' => true]);
+            }
+
+            // 1. Pastikan user pembimbing & guru dapat login
             if (Schema::hasTable('users')) {
                 DB::table('users')->where('username', 'sofia123')->update(['password' => Hash::make('password123')]);
                 DB::table('users')->where('username', 'gina1234')->update(['password' => Hash::make('password123')]);
+                DB::table('users')->where('username', 'admin')->update(['password' => Hash::make('password')]);
+                DB::table('users')->where('username', 'AnnisaDina17')->update(['password' => Hash::make('password')]);
             }
 
             // 2. Pastikan presensi AnnisaDina untuk hari ini (2026-11-18) tersimpan bila placement_id ada
@@ -54,7 +62,7 @@ return new class extends Migration
             // 3. Update serial sequence untuk PostgreSQL
             $driver = DB::getDriverName();
             if ($driver === 'pgsql') {
-                foreach (['attendances', 'journals', 'users', 'project_submissions'] as $table) {
+                foreach (['attendances', 'journals', 'users', 'project_submissions', 'placements', 'locations'] as $table) {
                     if (Schema::hasTable($table) && Schema::hasColumn($table, 'id')) {
                         $maxId = DB::table($table)->max('id');
                         if ($maxId) {
@@ -66,7 +74,7 @@ return new class extends Migration
                 }
             }
         } catch (\Throwable $e) {
-            // Abaikan error agar migrasi tidak menggagalkan deployment
+            // Abaikan error agar migrasi tidak menggagalkan proses deployment
         }
     }
 
