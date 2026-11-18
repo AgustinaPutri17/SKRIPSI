@@ -303,6 +303,7 @@ class TeacherController extends Controller
         $placementIds = $this->getTeacherPlacementIds($request);
         $todayWib = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
         $todayUtc = \Carbon\Carbon::now('UTC')->toDateString();
+        $today = $todayWib;
         $possibleDates = array_values(array_unique([$todayWib, $todayUtc]));
 
         $activePlacements = Placement::with(['student.user', 'location'])
