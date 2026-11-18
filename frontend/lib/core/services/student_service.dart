@@ -577,6 +577,7 @@ class StudentService {
     String? plan,
     String? result,
     String? filePath,
+    Uint8List? fileBytes,
     String? documentName,
     int? documentSize,
     bool submitImmediately = true,
@@ -597,8 +598,10 @@ class StudentService {
     final token = await AuthService.getToken();
     final url = Uri.parse('${AuthService.baseUrl}/student/projects');
 
+    final bool hasFile = (fileBytes != null && fileBytes.isNotEmpty) || (filePath != null && filePath.isNotEmpty);
+
     try {
-      if (filePath != null && filePath.isNotEmpty) {
+      if (hasFile) {
         final request = http.MultipartRequest('POST', url);
         if (token != null) request.headers['Authorization'] = 'Bearer $token';
         request.headers['Accept'] = 'application/json';
@@ -613,24 +616,27 @@ class StudentService {
           request.fields['document_name'] = documentName;
         }
 
-        List<int>? bytes;
-        try {
-          if (!kIsWeb) {
-            final f = File(filePath);
-            if (await f.exists()) {
-              bytes = await f.readAsBytes();
+        List<int>? bytes = fileBytes;
+        if (bytes == null && filePath != null && filePath.isNotEmpty) {
+          try {
+            if (!kIsWeb) {
+              final f = File(filePath);
+              if (await f.exists()) {
+                bytes = await f.readAsBytes();
+              }
             }
-          }
-        } catch (_) {}
+          } catch (_) {}
+        }
 
-        if (bytes != null) {
+        if (bytes != null && bytes.isNotEmpty) {
           request.files.add(http.MultipartFile.fromBytes(
             'document',
             bytes,
             filename: documentName ?? 'projek_laporan.pdf',
             contentType: MediaType('application', 'pdf'),
           ));
-        } else {
+          request.fields['document_base64'] = base64Encode(bytes);
+        } else if (filePath != null && filePath.isNotEmpty) {
           request.files.add(await http.MultipartFile.fromPath(
             'document',
             filePath,

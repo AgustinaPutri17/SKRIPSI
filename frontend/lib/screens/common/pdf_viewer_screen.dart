@@ -60,18 +60,36 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       }
 
       // 1. Coba endpoint langsung /api/projects/{id}/document
-      if (widget.projectId != null) {
+      if (widget.projectId != null && widget.projectId! > 0) {
+        // 1a. Coba dengan Authorization header
         final uri = Uri.parse('${AuthService.baseUrl}/projects/${widget.projectId}/document');
-        final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
-        if (res.statusCode >= 200 && res.statusCode < 300 && res.bodyBytes.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _bytes = res.bodyBytes;
-              _isLoading = false;
-            });
-            return;
+        try {
+          final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+          if (res.statusCode >= 200 && res.statusCode < 300 && res.bodyBytes.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _bytes = res.bodyBytes;
+                _isLoading = false;
+              });
+              return;
+            }
           }
-        }
+        } catch (_) {}
+
+        // 1b. Coba endpoint publik /api/public/projects/{id}/document (menghindari CORS preflight header issue pada browser)
+        final publicUri = Uri.parse('${AuthService.baseUrl}/public/projects/${widget.projectId}/document');
+        try {
+          final resPub = await http.get(publicUri).timeout(const Duration(seconds: 15));
+          if (resPub.statusCode >= 200 && resPub.statusCode < 300 && resPub.bodyBytes.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _bytes = resPub.bodyBytes;
+                _isLoading = false;
+              });
+              return;
+            }
+          }
+        } catch (_) {}
       }
 
       // 2. Coba documentUrl jika ada
@@ -83,16 +101,32 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               .replaceAll('http://localhost:8000', activeHost)
               .replaceAll('http://127.0.0.1:8000', activeHost);
         }
-        final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 15));
-        if (res.statusCode >= 200 && res.statusCode < 300 && res.bodyBytes.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _bytes = res.bodyBytes;
-              _isLoading = false;
-            });
-            return;
+
+        try {
+          final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 15));
+          if (res.statusCode >= 200 && res.statusCode < 300 && res.bodyBytes.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _bytes = res.bodyBytes;
+                _isLoading = false;
+              });
+              return;
+            }
           }
-        }
+        } catch (_) {}
+
+        try {
+          final resPlain = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+          if (resPlain.statusCode >= 200 && resPlain.statusCode < 300 && resPlain.bodyBytes.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _bytes = resPlain.bodyBytes;
+                _isLoading = false;
+              });
+              return;
+            }
+          }
+        } catch (_) {}
       }
 
       throw Exception('Gagal mengunduh atau membaca berkas PDF dari server.');

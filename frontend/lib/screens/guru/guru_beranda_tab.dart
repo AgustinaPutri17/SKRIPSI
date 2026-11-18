@@ -48,7 +48,6 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
 
   // Lists from Backend
   List<Map<String, dynamic>> _weeklyAttendance = [];
-  List<Map<String, dynamic>> _attentionItems = [];
   List<Map<String, dynamic>> _recentActivities = [];
   List<Map<String, dynamic>> _studentLogbookProgress = [];
   List<Map<String, dynamic>> _recentLogbooks = [];
@@ -91,12 +90,6 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
 
           if (dashboardData['weekly_attendance'] is List) {
             _weeklyAttendance = (dashboardData['weekly_attendance'] as List)
-                .map((e) => Map<String, dynamic>.from(e as Map))
-                .toList();
-          }
-
-          if (dashboardData['attention_items'] is List) {
-            _attentionItems = (dashboardData['attention_items'] as List)
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList();
           }
@@ -230,11 +223,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                       _buildSummaryGrid(),
                       const SizedBox(height: 22),
 
-                      // 4. BAGIAN "Perlu Perhatian"
-                      _buildPerluPerhatianSection(),
-                      const SizedBox(height: 22),
-
-                      // 5. BAGIAN "Kehadiran Minggu Ini"
+                      // 4. BAGIAN "Kehadiran Minggu Ini"
                       _buildKehadiranMingguIniSection(),
                       const SizedBox(height: 22),
 
@@ -265,19 +254,19 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.28),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -291,21 +280,21 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               const Text(
                 'Kehadiran Hari Ini',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Text(
                   'Berjalan',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFFD97706),
                   ),
@@ -313,7 +302,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Big Highlight Text: "X dari Y siswa sudah masuk"
           RichText(
@@ -322,16 +311,16 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
                 TextSpan(
                   text: '$_attendanceToday ',
                   style: const TextStyle(
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.4,
                   ),
                 ),
                 TextSpan(
                   text: 'dari $_totalStudents siswa sudah masuk',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFDBEAFE),
                   ),
@@ -339,13 +328,13 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
           // Horizontal Progress Bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             child: Container(
-              height: 7,
+              height: 5,
               color: Colors.white.withValues(alpha: 0.22),
               child: Row(
                 children: [
@@ -368,7 +357,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
           // 3 Sub-stats under bar: Hadir | Izin/Sakit | Belum absen
           Row(
@@ -377,25 +366,6 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
               _buildKehadiranSubStat('$_attendanceToday Hadir', Colors.white),
               _buildKehadiranSubStat('$_leaveToday Izin / Sakit', const Color(0xFFDBEAFE)),
               _buildKehadiranSubStat('$_unattendedToday Belum absen', const Color(0xFFBFDBFE)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(color: Color(0x33FFFFFF), height: 1),
-          const SizedBox(height: 10),
-
-          // Footer info batas konfirmasi masuk
-          Row(
-            children: const [
-              Icon(Icons.access_time_rounded, size: 13, color: Color(0xFFBFDBFE)),
-              SizedBox(width: 6),
-              Text(
-                'Batas konfirmasi masuk: 08:30 WIB',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFFDBEAFE),
-                ),
-              ),
             ],
           ),
         ],
@@ -437,38 +407,38 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
           onTap: () => widget.onNavigateTab?.call(1),
         ),
 
-        // 2. Rata-rata Hadir
+        // 2. Rata-rata Hadir (Diselaraskan dengan Siswa: person_rounded hijau)
         _buildStatCard(
           title: 'Rata-rata Hadir',
           value: '$_monthlyRate',
           unit: '%',
           subtitle: _getCurrentMonthName(),
-          icon: Icons.directions_run_rounded,
-          iconBg: const Color(0xFFDCFCE7),
-          iconColor: const Color(0xFF16A34A),
-          subtitleColor: const Color(0xFF16A34A),
+          icon: Icons.person_rounded,
+          iconBg: const Color(0xFFECFDF5),
+          iconColor: const Color(0xFF10B981),
+          subtitleColor: const Color(0xFF10B981),
         ),
 
-        // 3. Logbook Belum Diulas
+        // 3. Logbook Belum Diulas (Diselaraskan dengan Siswa: assignment_turned_in_rounded)
         _buildStatCard(
           title: 'Logbook Belum Diulas',
           value: '$_journalsPending',
           unit: 'Logbook',
           subtitle: 'Perlu ditinjau',
-          icon: Icons.description_outlined,
+          icon: Icons.assignment_turned_in_rounded,
           iconBg: const Color(0xFFFEF3C7),
           iconColor: const Color(0xFFD97706),
           subtitleColor: const Color(0xFFD97706),
           onTap: () => widget.onNavigateTab?.call(2), // Tab Logbook
         ),
 
-        // 4. Izin & Sakit
+        // 4. Izin & Sakit (Diselaraskan dengan Siswa: medical_services_rounded)
         _buildStatCard(
           title: 'Izin & Sakit',
           value: '$_leavePending',
           unit: 'Pengajuan',
           subtitle: 'Menunggu persetujuan',
-          icon: Icons.medical_services_outlined,
+          icon: Icons.medical_services_rounded,
           iconBg: const Color(0xFFF3E8FF),
           iconColor: const Color(0xFF9333EA),
           subtitleColor: const Color(0xFF9333EA),
@@ -583,194 +553,7 @@ class _GuruBerandaTabState extends State<GuruBerandaTab> {
     );
   }
 
-  // ── 3. BAGIAN "Perlu Perhatian" ───────────────────────────────────────────
-  Widget _buildPerluPerhatianSection() {
-    final int attentionCount = _attentionItems.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Header with count badge
-        Row(
-          children: [
-            const Text(
-              'Perlu Perhatian',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: attentionCount > 0 ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '$attentionCount',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: attentionCount > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-
-        if (_attentionItems.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFDCFCE7)),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Semua siswa tertib. Tidak ada hal mendesak yang memerlukan tindakan saat ini.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF15803D), fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _attentionItems.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (ctx, idx) => _buildAttentionCardItem(_attentionItems[idx]),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildAttentionCardItem(Map<String, dynamic> item) {
-    final type = item['type']?.toString() ?? '';
-    final studentName = item['student_name']?.toString() ?? 'Siswa';
-    final message = item['message']?.toString() ?? '';
-
-    Color iconBg;
-    Color iconColor;
-    IconData icon;
-    Color cardBorder;
-    String actionLabel;
-    Color actionColor;
-    VoidCallback onAction;
-
-    if (type == 'late_unattended') {
-      iconBg = const Color(0xFFFEE2E2);
-      iconColor = const Color(0xFFDC2626);
-      icon = Icons.error_outline_rounded;
-      cardBorder = const Color(0xFFFECACA);
-      actionLabel = 'Hubungi';
-      actionColor = const Color(0xFF2563EB);
-      onAction = () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Menghubungi siswa: $studentName (${item['student_phone'] ?? 'Belum ada nomor'})'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      };
-    } else if (type == 'pending_leave') {
-      iconBg = const Color(0xFFF3E8FF);
-      iconColor = const Color(0xFF9333EA);
-      icon = Icons.medical_services_outlined;
-      cardBorder = const Color(0xFFE9D5FF);
-      actionLabel = 'Tinjau';
-      actionColor = const Color(0xFF2563EB);
-      onAction = () => widget.onNavigateTab?.call(1);
-    } else {
-      // Pending logbooks
-      iconBg = const Color(0xFFFEF3C7);
-      iconColor = const Color(0xFFD97706);
-      icon = Icons.description_outlined;
-      cardBorder = const Color(0xFFFDE68A);
-      actionLabel = 'Lihat';
-      actionColor = const Color(0xFF2563EB);
-      onAction = () => widget.onNavigateTab?.call(2);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cardBorder, width: 1.1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: iconColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  studentName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onAction,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: const Size(50, 30),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              actionLabel,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: actionColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ── 4. BAGIAN "Kehadiran Minggu Ini" ───────────────────────────────────────
   Widget _buildKehadiranMingguIniSection() {

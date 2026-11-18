@@ -551,7 +551,7 @@ class StudentController extends Controller
 
         $projectsData = $submissions->map(function ($sub) {
             $data = $sub->toArray();
-            $data['document_url'] = $sub->document_path ? asset('storage/' . $sub->document_path) : null;
+            $data['document_url'] = $sub->document_name ? url('/api/projects/' . $sub->id . '/document') : ($sub->document_path ? asset('storage/' . $sub->document_path) : null);
             $data['reviews'] = $sub->reviews->map(function ($r) {
                 $role = $r->reviewer?->role;
                 return [
@@ -629,6 +629,25 @@ class StudentController extends Controller
             $submission->document_path = $path;
             $submission->document_name = $file->getClientOriginalName();
             $submission->document_size = $file->getSize();
+        } elseif ($request->filled('document_base64')) {
+            try {
+                $b64 = $request->input('document_base64');
+                if (str_contains($b64, ',')) {
+                    $b64 = explode(',', $b64)[1];
+                }
+                $binary = base64_decode($b64);
+                if ($binary !== false) {
+                    $origName = $request->input('document_name') ?: 'dokumen_projek.pdf';
+                    $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
+                    $path = 'projects/' . $placement->id . '/' . $filename;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $binary);
+                    $submission->document_path = $path;
+                    $submission->document_name = $origName;
+                    $submission->document_size = strlen($binary);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed saving document_base64: ' . $e->getMessage());
+            }
         } elseif ($request->filled('document_name') && !$submission->document_path) {
             $submission->document_name = $request->input('document_name');
             $submission->document_size = $request->input('document_size', 0);
@@ -649,7 +668,7 @@ class StudentController extends Controller
 
         $submission->load(['reviews.reviewer']);
         $data = $submission->toArray();
-        $data['document_url'] = $submission->document_path ? asset('storage/' . $submission->document_path) : null;
+        $data['document_url'] = $submission->document_name ? url('/api/projects/' . $submission->id . '/document') : ($submission->document_path ? asset('storage/' . $submission->document_path) : null);
         $data['reviews'] = $submission->reviews->map(function ($r) {
             $role = $r->reviewer?->role;
             return [
@@ -708,7 +727,7 @@ class StudentController extends Controller
 
         return $this->success([
             'submission' => array_merge($submission->toArray(), [
-                'document_url' => $submission->document_path ? asset('storage/' . $submission->document_path) : null,
+                'document_url' => $submission->document_name ? url('/api/projects/' . $submission->id . '/document') : ($submission->document_path ? asset('storage/' . $submission->document_path) : null),
             ]),
             'reviews' => $reviews,
         ]);

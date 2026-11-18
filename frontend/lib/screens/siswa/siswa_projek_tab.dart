@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/services/student_service.dart';
@@ -40,6 +41,7 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
 
   // Lampiran berkas PDF
   String? _selectedFilePath;
+  Uint8List? _selectedFileBytes;
   String? _selectedFileName;
   int _selectedFileSize = 0; // Bytes
 
@@ -151,8 +153,11 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
           return;
         }
 
+        final bytes = await file.readAsBytes();
+
         setState(() {
           _selectedFilePath = file.path;
+          _selectedFileBytes = bytes;
           _selectedFileName = file.name;
           _selectedFileSize = fileSize;
         });
@@ -212,6 +217,7 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
         plan: plan,
         result: result,
         filePath: _selectedFilePath,
+        fileBytes: _selectedFileBytes,
         documentName: _selectedFileName,
         documentSize: _selectedFileSize,
         submitImmediately: true,
@@ -227,7 +233,9 @@ class _SiswaProjekTabState extends State<SiswaProjekTab> {
             _planningController.clear();
             _pelaksanaanController.clear();
             _selectedFilePath = null;
+            _selectedFileBytes = null;
             _selectedFileName = null;
+            _selectedFileSize = 0;
 
             if (returnedData is Map) {
               final projMap = Map<String, dynamic>.from(returnedData);
