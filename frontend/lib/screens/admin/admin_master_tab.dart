@@ -29,7 +29,6 @@ class AdminMasterTabState extends State<AdminMasterTab> {
   List<dynamic> _placements = [];
   List<dynamic> _periods = [];
   List<dynamic> _fieldSupervisors = [];
-  String _placementFilterStatus = 'all'; // 'all', 'active', 'completed', 'inactive'
   final Map<dynamic, int> _placementCountMap = {};
 
   // Initial demo fallback data matching screenshot & database seeders
@@ -3403,15 +3402,6 @@ class AdminMasterTabState extends State<AdminMasterTab> {
       final student = p['student'] as Map<String, dynamic>? ?? {};
       final loc = p['location'] as Map<String, dynamic>? ?? {};
       final teacher = p['teacher'] as Map<String, dynamic>? ?? {};
-      final status = (p['status'] ?? 'active').toString().toLowerCase();
-
-      // Filter Status (Hanya Aktif dan Nonaktif)
-      if (_placementFilterStatus == 'active' && status != 'active') {
-        return false;
-      }
-      if (_placementFilterStatus == 'inactive' && status == 'active') {
-        return false;
-      }
 
       // Filter Search
       if (query.isNotEmpty) {
@@ -3427,21 +3417,6 @@ class AdminMasterTabState extends State<AdminMasterTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Status Filter Chips (Hanya Aktif dan Nonaktif)
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildPlacementFilterChip('all', 'Semua Status'),
-              const SizedBox(width: 8),
-              _buildPlacementFilterChip('active', 'Aktif'),
-              const SizedBox(width: 8),
-              _buildPlacementFilterChip('inactive', 'Nonaktif'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
         if (filtered.isEmpty)
           _buildEmptyState(
             title: 'Belum ada data penempatan',
@@ -3461,37 +3436,6 @@ class AdminMasterTabState extends State<AdminMasterTab> {
             },
           ),
       ],
-    );
-  }
-
-  Widget _buildPlacementFilterChip(String statusKey, String label) {
-    final isSelected = _placementFilterStatus == statusKey;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _placementFilterStatus = statusKey;
-        });
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0D9488) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF0D9488) : const Color(0xFFCBD5E1),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF475569),
-          ),
-        ),
-      ),
     );
   }
 
