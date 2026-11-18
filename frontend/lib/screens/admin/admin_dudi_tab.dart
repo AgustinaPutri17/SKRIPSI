@@ -188,7 +188,7 @@ class _AdminDudiTabState extends State<AdminDudiTab> {
                       bidang: 'Product Design & Mobile Development',
                       lokasi: 'Gedung Pasaraya Blok M, Jakarta Selatan',
                       kuota: '4 Siswa Terisi Penuh',
-                      radius: '100 Meter (Geofence Aktif)',
+                      radius: '50 Meter (Geofence Aktif)',
                       pic: 'Kevin Sanjaya, M.T. (Senior Dev)',
                       isFull: true,
                     ),

@@ -26,7 +26,7 @@ import '../../widgets/status_pill.dart';
 ///    a = sin²(Δlat/2) + cos(lat1) * cos(lat2) * sin²(Δlon/2)
 ///    c = 2 * atan2(√a, √(1−a))
 ///    d = R * c (R = 6.371.000 meter)
-/// 4. Memvalidasi apakah siswa berada dalam radius yang ditentukan DUDI (maks 100m).
+/// 4. Memvalidasi apakah siswa berada dalam radius yang ditentukan DUDI (maks 50m).
 /// 5. Sinkronisasi waktu jam presensi dengan server WIB.
 /// 6. Kamera Selfie Fisik (image_picker) & Pengiriman data presensi multipart:
 ///    - POST /api/student/attendances/check-in
@@ -134,7 +134,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
   // Default coordinate DUDI jika belum ada data API (PT Solusi Teknologi Mandiri)
   double _officeLat = -6.914744;
   double _officeLng = 107.609810;
-  int _allowedRadius = 100; // 100 meter radius
+  int _allowedRadius = 50; // 50 meter radius (standar)
 
   // Koordinat dinamis perangkat siswa (Real GPS)
   double _studentLat = -6.914900;
@@ -1461,7 +1461,7 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
                 ),
               ),
 
-              // Bottom row: Jarak (<100m) & Akurasi (±4m)
+              // Bottom row: Jarak (<50m) & Akurasi (±4m)
               Positioned(
                 bottom: 12,
                 left: 12,

@@ -111,7 +111,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
       'address': 'Jl. ZA. Pagar Alam No. 42, Gedong Meneng, Bandar Lampung',
       'latitude': -5.378921,
       'longitude': 105.251412,
-      'radius': 100,
+      'radius': 50,
       'student_count': 4,
       'is_active': true,
     },
@@ -121,7 +121,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
       'address': 'Jl. Majapahit No. 1, Enggal, Bandar Lampung',
       'latitude': -5.421034,
       'longitude': 105.263841,
-      'radius': 100,
+      'radius': 50,
       'student_count': 5,
       'is_active': true,
     },
@@ -131,7 +131,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
       'address': 'Jl. Raya Haji Mena No. 88, Natar / Rajabasa',
       'latitude': -5.352410,
       'longitude': 105.234120,
-      'radius': 100,
+      'radius': 50,
       'student_count': 3,
       'is_active': true,
     },
@@ -159,7 +159,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
         'id': 1,
         'name': 'PT Solusi Teknologi Mandiri',
         'address': 'Jl. ZA. Pagar Alam No. 42, Gedong Meneng, Bandar Lampung',
-        'radius': 100,
+        'radius': 50,
       },
       'teacher': {
         'id': 1,
@@ -197,7 +197,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
         'id': 2,
         'name': 'PT Telkom Witel Lampung',
         'address': 'Jl. Majapahit No. 1, Enggal, Bandar Lampung',
-        'radius': 100,
+        'radius': 50,
       },
       'teacher': {
         'id': 1,
@@ -1264,8 +1264,8 @@ class AdminMasterTabState extends State<AdminMasterTab> {
             : null;
         final bool hasCoordinates = lat != null && lng != null;
         final int radius = (item['radius'] != null)
-            ? int.tryParse(item['radius'].toString()) ?? 100
-            : 100;
+            ? int.tryParse(item['radius'].toString()) ?? 50
+            : 50;
 
         // Dynamic student count calculation: Placements API with fallback to dummy/seed count
         final int studentCount = _placementCountMap[id] ?? item['student_count'] ?? 0;
@@ -1681,7 +1681,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Radius Presensi Row with Pill Badge (Fixed 100m)
+                    // Radius Presensi Row with Pill Badge (Fixed 50m)
                     Row(
                       children: [
                         const Text(
@@ -1713,7 +1713,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                radius == 100 ? '100 Meter (Standar)' : '$radius Meter',
+                                radius == 50 ? '50 Meter (Standar)' : '$radius Meter',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -2231,7 +2231,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
     final addrCtrl = TextEditingController();
     final latCtrl = TextEditingController();
     final lngCtrl = TextEditingController();
-    const int lockedRadius = 100; // Radius tetap 100m sesuai permintaan
+    const int lockedRadius = 50; // Radius tetap 50m sesuai permintaan
 
     // 2. Controller Akun Pembimbing Lapangan DU/DI (4.5)
     final spvNameCtrl = TextEditingController();
@@ -2374,7 +2374,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                     ],
                   ),
 
-                  // Radius 100m Terstandar (Tanpa Pilihan Sesuai Permintaan)
+                  // Radius 50m Terstandar (Tanpa Pilihan Sesuai Permintaan)
                   Container(
                     margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(12),
@@ -2404,7 +2404,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Ditetapkan 100 Meter untuk presensi akurat siswa di lokasi',
+                                'Ditetapkan 50 Meter untuk presensi akurat siswa di lokasi',
                                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
                             ],
@@ -2417,7 +2417,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Text(
-                            '100 Meter',
+                            '50 Meter',
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                           ),
                         ),
@@ -2896,7 +2896,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
 
     final latCtrl = TextEditingController(text: initialLat != null ? initialLat.toStringAsFixed(6) : '');
     final lngCtrl = TextEditingController(text: initialLng != null ? initialLng.toStringAsFixed(6) : '');
-    const int lockedRadius = 100;
+    const int lockedRadius = 50;
 
     // Supervisor yang sedang terhubung saat ini
     int? selectedSupervisorId;
@@ -3048,7 +3048,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                     ),
                   ),
 
-                  // Radius 100 Meter Terstandar (Tanpa Pilihan Sesuai Permintaan)
+                  // Radius 50 Meter Terstandar (Tanpa Pilihan Sesuai Permintaan)
                   Container(
                     margin: const EdgeInsets.only(bottom: 20),
                     padding: const EdgeInsets.all(12),
@@ -3063,7 +3063,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            'Radius Geofence: 100 Meter (Standar Presensi)',
+                            'Radius Geofence: 50 Meter (Standar Presensi)',
                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                           ),
                         ),
@@ -3074,7 +3074,7 @@ class AdminMasterTabState extends State<AdminMasterTab> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: const Color(0xFFBFDBFE)),
                           ),
-                          child: const Text('100m', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+                          child: const Text('50m', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
                         ),
                       ],
                     ),

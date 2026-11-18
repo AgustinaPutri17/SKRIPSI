@@ -607,7 +607,7 @@ class AdminService {
     required String address,
     double? latitude,
     double? longitude,
-    int radius = 100,
+    int radius = 50,
     bool isActive = true,
     List<int>? fieldSupervisorIds,
   }) async {
@@ -652,7 +652,7 @@ class AdminService {
     required String address,
     double? latitude,
     double? longitude,
-    int radius = 100,
+    int radius = 50,
     List<int>? fieldSupervisorIds,
   }) async {
     try {
