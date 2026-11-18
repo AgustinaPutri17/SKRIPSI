@@ -49,6 +49,7 @@ Route::match(['GET', 'OPTIONS'], '/public/projects/{id}/document', function ($id
         $project = (object)[
             'title' => 'Dokumen Projek #' . $id,
             'document_name' => 'dokumen_projek_' . $id . '.pdf',
+            'document_path' => null,
             'placement' => null,
             'plan' => 'Rincian perencanaan projek PKL tersimpan dalam sistem arsip digital.',
             'result' => 'Rincian pelaksanaan hasil karya projek PKL tersimpan dalam sistem arsip digital.',
@@ -60,7 +61,7 @@ Route::match(['GET', 'OPTIONS'], '/public/projects/{id}/document', function ($id
         ];
     }
 
-    $path = $project->document_path ? storage_path('app/public/' . $project->document_path) : null;
+    $path = !empty($project->document_path) ? storage_path('app/public/' . $project->document_path) : null;
     if ($path && file_exists($path)) {
         return response()->file($path, [
             'Content-Type' => 'application/pdf',
@@ -108,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
             $project = (object)[
                 'title' => 'Dokumen Projek #' . $id,
                 'document_name' => 'dokumen_projek_' . $id . '.pdf',
+                'document_path' => null,
                 'placement' => null,
                 'plan' => 'Rincian perencanaan projek PKL tersimpan dalam sistem arsip digital.',
                 'result' => 'Rincian pelaksanaan hasil karya projek PKL tersimpan dalam sistem arsip digital.',
@@ -119,7 +121,7 @@ Route::middleware('auth:sanctum')->group(function () {
             ];
         }
 
-        $path = $project->document_path ? storage_path('app/public/' . $project->document_path) : null;
+        $path = !empty($project->document_path) ? storage_path('app/public/' . $project->document_path) : null;
         if ($path && file_exists($path)) {
             return response()->file($path, [
                 'Content-Type' => 'application/pdf',
