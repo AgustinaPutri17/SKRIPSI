@@ -35,9 +35,10 @@ class _SiswaMainScreenState extends State<SiswaMainScreen> {
       _currentIndex = index.clamp(0, 4);
       if (_currentIndex == 0) {
         _berandaKey = UniqueKey();
-      }
-      if (subTab != null) {
-        _presensiSubTab = subTab;
+      } else if (_currentIndex == 1) {
+        if (subTab != null) {
+          _presensiSubTab = subTab;
+        }
         _presensiKey = UniqueKey();
       }
     });

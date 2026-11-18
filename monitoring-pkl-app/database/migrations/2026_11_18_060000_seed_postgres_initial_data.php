@@ -21,10 +21,26 @@ return new class extends Migration
 
             // 2. Pastikan password akun utama disetel dengan benar
             if (Schema::hasTable('users')) {
-                DB::table('users')->where('username', 'sofia123')->update(['password' => Hash::make('password123')]);
+                DB::table('users')->where('username', 'sofia123')->update(['password' => Hash::make('sofia123')]);
                 DB::table('users')->where('username', 'gina1234')->update(['password' => Hash::make('password123')]);
                 DB::table('users')->where('username', 'admin')->update(['password' => Hash::make('password')]);
                 DB::table('users')->where('username', 'AnnisaDina17')->update(['password' => Hash::make('password')]);
+            }
+
+            // 2b. Pastikan lokasi mitra memiliki jadwal jam kerja (10:00 WIB untuk keluar)
+            if (Schema::hasTable('locations')) {
+                DB::table('locations')->whereIn('id', [11, 13])->update([
+                    'check_in_time' => '08:00',
+                    'check_out_time' => '10:00',
+                ]);
+            }
+
+            // 2c. Pastikan placement Agustina Putri (15) dan AnnisaDina (17) dibimbing oleh Sofia (12) di Gang M.Said (13)
+            if (Schema::hasTable('placements')) {
+                DB::table('placements')->where('id', 15)->update([
+                    'location_id' => 13,
+                    'field_supervisor_id' => 12,
+                ]);
             }
 
             // 3. Pastikan presensi AnnisaDina untuk hari ini (2026-11-18) tersimpan bila placement_id ada

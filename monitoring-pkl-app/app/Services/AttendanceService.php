@@ -174,9 +174,9 @@ class AttendanceService
 
         // Validasi jam pulang: siswa baru bisa absen pulang jika sudah memasuki check_out_time DU/DI
         $location = $placement->location;
-        $currentTime = now();
+        $currentTime = \Carbon\Carbon::now('Asia/Jakarta');
         $targetCheckOutTimeStr = $location->check_out_time ? substr($location->check_out_time, 0, 5) : '16:00';
-        $targetCheckOutTime = \Carbon\Carbon::parse($today . ' ' . $targetCheckOutTimeStr);
+        $targetCheckOutTime = \Carbon\Carbon::parse($today . ' ' . $targetCheckOutTimeStr, 'Asia/Jakarta');
         if ($currentTime->lt($targetCheckOutTime)) {
             throw new \Exception(
                 "Belum waktunya absen pulang. Presensi pulang baru dibuka mulai pukul {$targetCheckOutTimeStr} WIB.",

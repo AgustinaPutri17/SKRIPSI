@@ -73,7 +73,10 @@ class _DudiMainScreenState extends State<DudiMainScreen> {
     setState(() {
       _currentIndex = safeIndex;
     });
-    if (safeIndex == 0) _loadDashboard();
+    if (safeIndex == 0) {
+      _loadDashboard();
+      _loadStudents();
+    }
     if (safeIndex == 1) _loadStudents();
     if (safeIndex == 2) _loadLogbooks();
     if (safeIndex == 3) _loadProjects();

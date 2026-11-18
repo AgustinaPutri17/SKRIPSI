@@ -22,6 +22,7 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
   late int _currentIndex;
   int _pendingLeaves = 0;
   int _pendingJournals = 0;
+  Key _berandaKey = UniqueKey();
 
   @override
   void initState() {
@@ -45,6 +46,9 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
   void _onTabTapped(int index) {
     setState(() {
       _currentIndex = index.clamp(0, 4);
+      if (_currentIndex == 0) {
+        _berandaKey = UniqueKey();
+      }
     });
     _loadBadges();
   }
@@ -58,7 +62,7 @@ class _GuruMainScreenState extends State<GuruMainScreen> {
     // 3: Projek (Pemantauan & Catatan Projek Siswa Terverifikasi DU/DI)
     // 4: Profil
     final List<Widget> pages = [
-      GuruBerandaTab(onNavigateTab: _onTabTapped),
+      GuruBerandaTab(key: _berandaKey, onNavigateTab: _onTabTapped),
       GuruRekapTab(onNavigateTab: _onTabTapped),
       GuruVerifikasiTab(onNavigateTab: _onTabTapped),
       GuruProjekTab(onNavigateTab: _onTabTapped),

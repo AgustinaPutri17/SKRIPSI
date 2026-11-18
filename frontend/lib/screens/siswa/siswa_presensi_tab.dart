@@ -622,41 +622,50 @@ class _SiswaPresensiTabState extends State<SiswaPresensiTab> {
 
       if (mounted) {
         setState(() {
+          Map<String, dynamic>? loc;
           if (placementData != null) {
             _placement = placementData;
-            final loc = placementData['location'] as Map<String, dynamic>?;
-            if (loc != null) {
-              final lat = double.tryParse(loc['latitude']?.toString() ?? '');
-              final lng = double.tryParse(loc['longitude']?.toString() ?? '');
-              final rad = int.tryParse(loc['radius']?.toString() ?? '');
+            loc = placementData['location'] as Map<String, dynamic>?;
+          }
+          if (loc == null && dashboardData != null && dashboardData['placement'] != null) {
+            final dp = dashboardData['placement'] as Map<String, dynamic>?;
+            _placement ??= dp;
+            loc = dp?['location'] as Map<String, dynamic>?;
+          }
 
-              if (lat != null && lng != null) {
-                _officeLat = lat;
-                _officeLng = lng;
-                if (!_isRealGpsActive) {
-                  // Jika GPS perangkat belum mengunci posisi asli, gunakan posisi terkalibrasi ~35m
-                  _studentLat = lat - 0.00025;
-                  _studentLng = lng + 0.00018;
-                }
+          if (loc != null) {
+            final lat = double.tryParse(loc['latitude']?.toString() ?? '');
+            final lng = double.tryParse(loc['longitude']?.toString() ?? '');
+            final rad = int.tryParse(loc['radius']?.toString() ?? '');
+
+            if (lat != null && lng != null) {
+              _officeLat = lat;
+              _officeLng = lng;
+              if (!_isRealGpsActive) {
+                // Jika GPS perangkat belum mengunci posisi asli, gunakan posisi terkalibrasi ~35m
+                _studentLat = lat - 0.00025;
+                _studentLng = lng + 0.00018;
               }
-              if (rad != null && rad > 0) {
-                _allowedRadius = rad;
+            }
+            if (rad != null && rad > 0) {
+              _allowedRadius = rad;
+            }
+            if (loc['check_in_time'] != null && loc['check_in_time'].toString().isNotEmpty) {
+              final rawIn = loc['check_in_time'].toString();
+              final parts = rawIn.split(':');
+              if (parts.length >= 2) {
+                _checkInHour = int.tryParse(parts[0]) ?? 8;
+                _checkInMinute = int.tryParse(parts[1]) ?? 0;
+                _checkInTimeString = '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
               }
-              if (loc['check_in_time'] != null && loc['check_in_time'].toString().isNotEmpty) {
-                _checkInTimeString = loc['check_in_time'].toString();
-                final parts = _checkInTimeString.split(':');
-                if (parts.length >= 2) {
-                  _checkInHour = int.tryParse(parts[0]) ?? 8;
-                  _checkInMinute = int.tryParse(parts[1]) ?? 0;
-                }
-              }
-              if (loc['check_out_time'] != null && loc['check_out_time'].toString().isNotEmpty) {
-                _checkOutTimeString = loc['check_out_time'].toString();
-                final parts = _checkOutTimeString.split(':');
-                if (parts.length >= 2) {
-                  _checkOutHour = int.tryParse(parts[0]) ?? 16;
-                  _checkOutMinute = int.tryParse(parts[1]) ?? 0;
-                }
+            }
+            if (loc['check_out_time'] != null && loc['check_out_time'].toString().isNotEmpty) {
+              final rawOut = loc['check_out_time'].toString();
+              final parts = rawOut.split(':');
+              if (parts.length >= 2) {
+                _checkOutHour = int.tryParse(parts[0]) ?? 16;
+                _checkOutMinute = int.tryParse(parts[1]) ?? 0;
+                _checkOutTimeString = '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
               }
             }
           }
