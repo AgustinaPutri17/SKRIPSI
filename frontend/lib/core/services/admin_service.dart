@@ -1067,7 +1067,7 @@ class AdminService {
   /// API Backend: 4.8 Master Data Penempatan Siswa
   /// Endpoint: DELETE /api/admin/placements/{id}
   /// Controller: App\Http\Controllers\Api\Admin\PlacementController@destroy
-  /// Deskripsi: Menonaktifkan penempatan dengan status = 'inactive'
+  /// Deskripsi: Menghapus data penempatan siswa
   /// ============================================================================
   static Future<Map<String, dynamic>> deletePlacement(int id) async {
     try {
@@ -1077,9 +1077,9 @@ class AdminService {
 
       final data = jsonDecode(response.body);
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return {'success': true, 'message': data['message'] ?? 'Penempatan berhasil dinonaktifkan.'};
+        return {'success': true, 'message': data['message'] ?? 'Data penempatan berhasil dihapus.'};
       }
-      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menonaktifkan penempatan.')};
+      return {'success': false, 'message': _extractErrorMessage(data, 'Gagal menghapus penempatan.')};
     } catch (e) {
       return {'success': false, 'message': 'Gagal terhubung ke server ($e).'};
     }

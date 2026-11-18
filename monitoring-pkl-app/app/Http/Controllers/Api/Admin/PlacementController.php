@@ -100,13 +100,22 @@ class PlacementController extends Controller
     }
 
     /**
-     * Deactivate placement preserving historical records.
+     * Delete placement and associated records.
      */
     public function destroy(int $id): JsonResponse
     {
         $placement = Placement::findOrFail($id);
-        $placement->update(['status' => 'inactive']);
-        return $this->success(null, 'Penempatan berhasil dinonaktifkan.');
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($placement) {
+            $placement->attendances()->delete();
+            $placement->logbooks()->delete();
+            $placement->leaveRequests()->delete();
+            $placement->projectSubmissions()->delete();
+            \App\Models\Assessment::where('placement_id', $placement->id)->delete();
+            $placement->delete();
+        });
+
+        return $this->success(null, 'Data penempatan berhasil dihapus.');
     }
 
     /**

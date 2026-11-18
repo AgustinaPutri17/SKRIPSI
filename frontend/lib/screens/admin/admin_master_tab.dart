@@ -3750,71 +3750,10 @@ class AdminMasterTabState extends State<AdminMasterTab> {
           ),
           const SizedBox(height: 12),
 
-          // Actions: Toggle Aktif / Nonaktif & Edit Penempatan
-          Row(
-            children: [
-              if (isActive)
-                InkWell(
-                  onTap: () => _confirmDeletePenempatan(id, studentName, locName),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFFCA5A5)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.block_rounded, size: 15, color: Color(0xFFDC2626)),
-                        SizedBox(width: 4),
-                        Text(
-                          'Nonaktifkan',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                InkWell(
-                  onTap: () => _handleToggleStatusPenempatan(id, false),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF86EFAC)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle_rounded, size: 15, color: Color(0xFF16A34A)),
-                        SizedBox(width: 4),
-                        Text(
-                          'Aktifkan Kembali',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () => _showEditPenempatanModal(item),
-                icon: const Icon(Icons.edit_note_rounded, size: 16),
-                label: const Text('Edit Penempatan'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
+          // Actions: Hapus & Edit Penempatan
+          _buildCardActionButtons(
+            onDelete: () => _confirmDeletePenempatan(id, studentName, locName),
+            onEdit: () => _showEditPenempatanModal(item),
           ),
         ],
       ),
@@ -4921,41 +4860,42 @@ class AdminMasterTabState extends State<AdminMasterTab> {
     );
   }
 
-  // ── KONFIRMASI NONAKTIFKAN PENEMPATAN ──
+  // ── KONFIRMASI HAPUS PENEMPATAN ──
   void _confirmDeletePenempatan(int id, String studentName, String dudiName) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Nonaktifkan', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Hapus Data Penempatan', style: TextStyle(fontWeight: FontWeight.w700)),
         content: Text(
-          'Apakah Anda yakin ingin menonaktifkan penempatan siswa "$studentName" di "$dudiName"? Status akan diubah menjadi nonaktif tanpa menghapus data logbook dan presensi siswa.',
+          'Apakah Anda yakin ingin menghapus data penempatan siswa "$studentName" di "$dudiName"? Data penempatan ini akan dihapus permanen dari sistem.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
               // ========================================================================
               // PANGGILAN API BACKEND: 4.8 Master Data Penempatan Siswa (DELETE)
               // Endpoint: DELETE /api/admin/placements/{id}
               // Controller: App\Http\Controllers\Api\Admin\PlacementController@destroy
-              // Deskripsi: Menonaktifkan penempatan dengan mengubah status menjadi 'inactive'
+              // Deskripsi: Menghapus data penempatan siswa secara permanen
               // ========================================================================
               final res = await AdminService.deletePlacement(id);
               if (!mounted) return;
               if (res['success'] == true) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(res['message'] ?? 'Penempatan berhasil dinonaktifkan!'), backgroundColor: Colors.orange),
-                );
                 await _fetchData();
+                messenger.showSnackBar(
+                  SnackBar(content: Text(res['message'] ?? 'Data penempatan berhasil dihapus!'), backgroundColor: Colors.green),
+                );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(res['message'] ?? 'Gagal menonaktifkan penempatan.'), backgroundColor: Colors.red),
+                messenger.showSnackBar(
+                  SnackBar(content: Text(res['message'] ?? 'Gagal menghapus penempatan.'), backgroundColor: Colors.red),
                 );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Nonaktifkan'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -5018,29 +4958,6 @@ class AdminMasterTabState extends State<AdminMasterTab> {
         ),
       ),
     );
-  }
-
-  // ── TOGGLE STATUS PENEMPATAN (Aktif / Nonaktif) ──
-  Future<void> _handleToggleStatusPenempatan(int id, bool currentIsActive) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final res = await AdminService.togglePlacementStatus(id);
-    if (!mounted) return;
-    if (res['success'] == true) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(res['message'] ?? 'Status penempatan berhasil diperbarui!'),
-          backgroundColor: currentIsActive ? Colors.orange : const Color(0xFF16A34A),
-        ),
-      );
-      await _fetchData();
-    } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(res['message'] ?? 'Gagal mengubah status penempatan.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   // ── 5. PERIODE PKL LIST & CARD ──
