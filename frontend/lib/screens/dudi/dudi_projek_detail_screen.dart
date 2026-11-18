@@ -387,7 +387,7 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                                   onTap: () {
                                     final pId = _project?['id'] is int
                                         ? _project!['id'] as int
-                                        : int.tryParse(_project?['id']?.toString() ?? '');
+                                        : int.tryParse((_project?['id'] ?? widget.projectId ?? '').toString());
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -456,7 +456,7 @@ class _DudiProjekDetailScreenState extends State<DudiProjekDetailScreen> {
                                   onPressed: () {
                                     final pId = _project?['id'] is int
                                         ? _project!['id'] as int
-                                        : int.tryParse(_project?['id']?.toString() ?? '');
+                                        : int.tryParse((_project?['id'] ?? widget.projectId ?? '').toString());
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(

@@ -378,7 +378,7 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                                   onTap: () {
                                     final pId = _project?['id'] is int
                                         ? _project!['id'] as int
-                                        : int.tryParse(_project?['id']?.toString() ?? '');
+                                        : int.tryParse((_project?['id'] ?? widget.projectId ?? '').toString());
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -447,7 +447,7 @@ class _GuruProjekDetailScreenState extends State<GuruProjekDetailScreen> {
                                   onPressed: () {
                                     final pId = _project?['id'] is int
                                         ? _project!['id'] as int
-                                        : int.tryParse(_project?['id']?.toString() ?? '');
+                                        : int.tryParse((_project?['id'] ?? widget.projectId ?? '').toString());
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
